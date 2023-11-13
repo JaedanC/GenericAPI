@@ -4,9 +4,11 @@ from io import StringIO
 import base64
 import copy
 import csv
+import io
 import ipaddress
-import os
 import json
+import os
+import traceback
 import requests
 from typing import Callable, Any, List, Set
 
@@ -579,6 +581,12 @@ def ip_in_subnet(ip_with_subnet: str, valid_prefixes: List[str] | str):
         if ip_address in prefix:
             return True
     return False
+
+
+def stacktrace_of(e: Exception):
+    errors = io.StringIO()
+    traceback.print_exc(file=errors)  # Instead of printing directly to stdout, the result can be further processed
+    return str(errors.getvalue())
 
 
 def __get_user():
