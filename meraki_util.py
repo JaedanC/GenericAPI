@@ -1,8 +1,7 @@
 import meraki
 import os
-from api import cache_csv, cache_json
+from .api import cache_csv, cache_json
 from typing import List
-from functools import cached_property
 
 
 ONE_DAY = 86400

@@ -2,7 +2,7 @@ from __future__ import annotations
 import json
 from netbox_python.baseapi import APIResource
 from netbox_python.exceptions import NetBoxException
-from typing import List, Dict, Tuple
+from typing import List, Dict
 import sqlite3
 import datetime
 
