@@ -1,6 +1,6 @@
 import meraki
 import os
-from api import cache_csv, cache_json
+from .api import cache_csv, cache_json
 from typing import List
 
 
