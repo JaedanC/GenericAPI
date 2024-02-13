@@ -1,6 +1,6 @@
 import meraki
 import os
-from .api import cache_csv, cache_json
+from api import cache_csv, cache_json
 from typing import List
 
 
@@ -600,3 +600,78 @@ def get_network_appliance_static_routes(
     """
     return dashboard.appliance.getNetworkApplianceStaticRoutes(network_id)
 
+
+@cache_json("cache/getDeviceLldpCdp.json")
+def get_device_lldp_cdp(
+    dashboard: meraki.DashboardAPI, serial: str) -> dict:
+    """https://developer.cisco.com/meraki/api/get-device-lldp-cdp/
+    {
+        "sourceMac": "00:11:22:33:44:55",
+        "ports": {
+            "8": {
+                "cdp": {
+                    "deviceId": "e0553d8cdf53",
+                    "portId": "Port 10",
+                    "address": "00:11:22:33:44:55",
+                    "sourcePort": "8"
+                }
+            },
+            "12": {
+                "cdp": {
+                    "deviceId": "e0553d8cdf53",
+                    "portId": "Port 11",
+                    "address": "00:11:22:33:44:55",
+                    "sourcePort": "12"
+                },
+                "lldp": {
+                    "systemName": "Meraki MS350-24X - Phineas",
+                    "portId": "11",
+                    "managementAddress": "00:11:22:33:44:55",
+                    "sourcePort": "12"
+                }
+            }
+        }
+    }
+    """
+    return dashboard.devices.getDeviceLldpCdp(
+        serial
+    )
+
+
+@cache_json("cache/getOrganizationDevices.json")
+@cache_csv("cache/getOrganizationDevices.csv")
+def get_organization_devices(
+    dashboard: meraki.DashboardAPI, organisation_id: str) -> dict:
+    """https://developer.cisco.com/meraki/api/get-device-lldp-cdp/
+    {
+        "sourceMac": "00:11:22:33:44:55",
+        "ports": {
+            "8": {
+                "cdp": {
+                    "deviceId": "e0553d8cdf53",
+                    "portId": "Port 10",
+                    "address": "00:11:22:33:44:55",
+                    "sourcePort": "8"
+                }
+            },
+            "12": {
+                "cdp": {
+                    "deviceId": "e0553d8cdf53",
+                    "portId": "Port 11",
+                    "address": "00:11:22:33:44:55",
+                    "sourcePort": "12"
+                },
+                "lldp": {
+                    "systemName": "Meraki MS350-24X - Phineas",
+                    "portId": "11",
+                    "managementAddress": "00:11:22:33:44:55",
+                    "sourcePort": "12"
+                }
+            }
+        }
+    }
+    """
+    return dashboard.organizations.getOrganizationDevices(
+        organisation_id,
+        "all"
+    )

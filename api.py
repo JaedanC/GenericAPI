@@ -313,6 +313,9 @@ class RelaxedDictionary:
 
     def get_base(self) -> dict:
         return self.base
+    
+    def is_empty(self):
+        return len(self.base) == 0
 
 
 class ListDictFilter:
