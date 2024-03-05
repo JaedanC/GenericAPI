@@ -543,8 +543,11 @@ def cache_json(file_path: str, verbose=False):
 
             if verbose:
                 print("Saving json", file_path)
-            with safe_open_w(file_path, encoding="utf-8") as f:
-                json.dump(contents, f, indent=4)
+            try:
+                with safe_open_w(file_path, encoding="utf-8") as f:
+                    json.dump(contents, f, indent=4)
+            except PermissionError as e:
+                print("Ignoring", e)
             return contents
         return wrapper
     return decorator
