@@ -26,7 +26,7 @@ def listify(object):
     return [object]
 
 
-@cache_json("cache/getOrganizations.json")
+# @cache_json("cache/getOrganizations.json")
 def get_organizations(dashboard: meraki.DashboardAPI):
     """https://developer.cisco.com/meraki/api-v1/get-organizations/
     ```json
@@ -57,8 +57,8 @@ def get_organizations(dashboard: meraki.DashboardAPI):
     return dashboard.organizations.getOrganizations()
 
 
-@cache_json("cache/getOrganizationNetworks.json")
-@cache_csv("cache/getOrganizationNetworks.csv")
+# @cache_json("cache/getOrganizationNetworks.json")
+# @cache_csv("cache/getOrganizationNetworks.csv")
 def get_organization_networks(
     dashboard: meraki.DashboardAPI, organization_id: int) -> List[dict]:
     """https://developer.cisco.com/meraki/api-v1/get-organization-networks/
@@ -86,8 +86,8 @@ def get_organization_networks(
     return dashboard.organizations.getOrganizationNetworks(organization_id)
 
 
-@cache_json("cache/getNetworkClients.json", verbose=False)
-@cache_csv("cache/getNetworkClients.csv", verbose=False)
+# @cache_json("cache/getNetworkClients.json", verbose=False)
+# @cache_csv("cache/getNetworkClients.csv", verbose=False)
 def get_network_clients(
     dashboard: meraki.DashboardAPI, network_ids: List[str] | str, timespan):
     """https://developer.cisco.com/meraki/api-v1/get-network-clients/
@@ -149,8 +149,8 @@ def get_network_clients(
     return all_clients
 
 
-@cache_json("cache/getOrganizationApplianceUplinkStatuses.json")
-@cache_csv("cache/getOrganizationApplianceUplinkStatuses.csv")
+# @cache_json("cache/getOrganizationApplianceUplinkStatuses.json")
+# @cache_csv("cache/getOrganizationApplianceUplinkStatuses.csv")
 def get_organization_appliance_uplink_statuses(
     dashboard: meraki.DashboardAPI, organization_id: int):
     """https://developer.cisco.com/meraki/api-v1/get-organization-uplinks-statuses/
@@ -191,7 +191,7 @@ def get_organization_appliance_uplink_statuses(
     return dashboard.appliance.getOrganizationApplianceUplinkStatuses(organization_id, "all")
 
 
-@cache_json("cache/getOrganizationDevicesPowerModulesStatusesByDevice.json")
+# @cache_json("cache/getOrganizationDevicesPowerModulesStatusesByDevice.json")
 def get_organization_devices_power_modules_statuses_by_device(
     dashboard: meraki.DashboardAPI, organization_id: int, **kwargs):
     """https://developer.cisco.com/meraki/api-latest/get-organization-devices-power-modules-statuses-by-device/
@@ -219,7 +219,7 @@ def get_organization_devices_power_modules_statuses_by_device(
     return dashboard.organizations.getOrganizationDevicesPowerModulesStatusesByDevice(organization_id, "all", **kwargs)
 
 
-@cache_json("cache/getDeviceApplianceDhcpSubnets.json")
+# @cache_json("cache/getDeviceApplianceDhcpSubnets.json")
 def get_device_appliance_dhcp_subnets(
     dashboard: meraki.DashboardAPI, serial: str):
     """https://developer.cisco.com/meraki/api-latest/get-device-appliance-dhcp-subnets/
@@ -237,8 +237,8 @@ def get_device_appliance_dhcp_subnets(
     return dashboard.appliance.getDeviceApplianceDhcpSubnets(serial)
 
 
-@cache_json("cache/getDeviceClients.json")
-@cache_csv("cache/getDeviceClients.csv")
+# @cache_json("cache/getDeviceClients.json")
+# @cache_csv("cache/getDeviceClients.csv")
 def get_device_clients(dashboard: meraki.DashboardAPI, serial: str):
     """https://developer.cisco.com/meraki/api-latest/get-device-appliance-dhcp-subnets/
     ```json
@@ -263,7 +263,7 @@ def get_device_clients(dashboard: meraki.DashboardAPI, serial: str):
     return dashboard.devices.getDeviceClients(serial)
 
 
-@cache_json("cache/getDeviceApplianceUplinksSettings.json")
+# @cache_json("cache/getDeviceApplianceUplinksSettings.json")
 def get_device_appliance_uplinks_settings(
     dashboard: meraki.DashboardAPI, serial: str):
     """https://developer.cisco.com/meraki/api/get-device-appliance-uplinks-settings/
@@ -351,7 +351,7 @@ def get_device_appliance_uplinks_settings(
     return dashboard.appliance.getDeviceApplianceUplinksSettings(serial)
 
 
-@cache_json("cache/getNetworkApplianceVlans.json", verbose=False)
+# @cache_json("cache/getNetworkApplianceVlans.json", verbose=False)
 def get_network_appliance_vlans(
     dashboard: meraki.DashboardAPI, network_id: str):
     """https://developer.cisco.com/meraki/api/get-network-appliance-vlans/
@@ -414,7 +414,7 @@ def get_network_appliance_vlans(
     return dashboard.appliance.getNetworkApplianceVlans(network_id)
 
 
-@cache_json("cache/getNetworkApplianceSingleLan.json", verbose=False)
+# @cache_json("cache/getNetworkApplianceSingleLan.json", verbose=False)
 def get_network_appliance_single_lan(
         dashboard: meraki.DashboardAPI, network_id: str):
     """https://developer.cisco.com/meraki/api/get-network-appliance-single-lan/
@@ -444,7 +444,7 @@ def get_network_appliance_single_lan(
 
 
 
-@cache_json("cache/getNetworkDevices.json")
+# @cache_json("cache/getNetworkDevices.json")
 def get_network_devices(dashboard: meraki.DashboardAPI, network_id: str):
     """https://developer.cisco.com/meraki/api/get-network-devices/
     ```json
@@ -475,7 +475,7 @@ def get_network_devices(dashboard: meraki.DashboardAPI, network_id: str):
     return dashboard.networks.getNetworkDevices(network_id)
 
  
-@cache_json("cache/getOrganizationApplianceVpnThirdPartyVPNPeers.json")
+# @cache_json("cache/getOrganizationApplianceVpnThirdPartyVPNPeers.json")
 def get_organization_appliance_vpn_third_party_vpn_peers(
     dashboard: meraki.DashboardAPI, organization_id: str):
     """https://developer.cisco.com/meraki/api/get-organization-appliance-vpn-third-party-vpn-peers/
@@ -514,7 +514,7 @@ def get_organization_appliance_vpn_third_party_vpn_peers(
     return dashboard.appliance.getOrganizationApplianceVpnThirdPartyVPNPeers(organization_id)
 
 
-@cache_json("cache/getNetworkApplianceVpnSiteToSiteVpn.json", verbose=False)
+# @cache_json("cache/getNetworkApplianceVpnSiteToSiteVpn.json", verbose=False)
 def get_network_appliance_vpn_site_to_site_vpn(
     dashboard: meraki.DashboardAPI, network_id: str):
     """https://developer.cisco.com/meraki/api/get-network-appliance-vpn-site-to-site-vpn/
@@ -539,10 +539,11 @@ def get_network_appliance_vpn_site_to_site_vpn(
     return dashboard.appliance.getNetworkApplianceVpnSiteToSiteVpn(network_id)
 
 
-@cache_json("cache/getDeviceCellularSims.json", verbose=False)
+# @cache_json("cache/getDeviceCellularSims.json", verbose=False)
 def get_device_cellular_sims(
     dashboard: meraki.DashboardAPI, serial: str):
     """https://developer.cisco.com/meraki/api/get-device-cellular-sims/
+    ```json
     {
         "sims": [
             {
@@ -564,14 +565,16 @@ def get_device_cellular_sims(
             }
         ]
     }
+    ```
     """
     return dashboard.devices.getDeviceCellularSims(serial)
 
 
-@cache_json("cache/getNetworkApplianceStaticRoutes.json", verbose=False)
+# @cache_json("cache/getNetworkApplianceStaticRoutes.json", verbose=False)
 def get_network_appliance_static_routes(
     dashboard: meraki.DashboardAPI, network_id: str) -> List[dict]:
     """https://developer.cisco.com/meraki/api/get-network-appliance-static-routes/
+    ```json
     [
         {
             "id": "d7fa4948-7921-4dfa-af6b-ae8b16c20c39",
@@ -597,14 +600,16 @@ def get_network_appliance_static_routes(
             "gatewayVlanId": 100
         }
     ]
+    ```
     """
     return dashboard.appliance.getNetworkApplianceStaticRoutes(network_id)
 
 
-@cache_json("cache/getDeviceLldpCdp.json")
+# @cache_json("cache/getDeviceLldpCdp.json")
 def get_device_lldp_cdp(
     dashboard: meraki.DashboardAPI, serial: str) -> dict:
     """https://developer.cisco.com/meraki/api/get-device-lldp-cdp/
+    ```json
     {
         "sourceMac": "00:11:22:33:44:55",
         "ports": {
@@ -632,17 +637,19 @@ def get_device_lldp_cdp(
             }
         }
     }
+    ```
     """
     return dashboard.devices.getDeviceLldpCdp(
         serial
     )
 
 
-@cache_json("cache/getOrganizationDevices.json")
-@cache_csv("cache/getOrganizationDevices.csv")
+# @cache_json("cache/getOrganizationDevices.json")
+# @cache_csv("cache/getOrganizationDevices.csv")
 def get_organization_devices(
     dashboard: meraki.DashboardAPI, organisation_id: str) -> dict:
     """https://developer.cisco.com/meraki/api/get-device-lldp-cdp/
+    ```json
     {
         "sourceMac": "00:11:22:33:44:55",
         "ports": {
@@ -670,8 +677,163 @@ def get_organization_devices(
             }
         }
     }
+    ```
     """
     return dashboard.organizations.getOrganizationDevices(
         organisation_id,
         "all"
+    )
+
+
+# @cache_json("cache/getNetworkApplianceFirewallCellularFirewallRules.json")
+def get_network_appliance_firewall_cellular_firewall_rules(
+    dashboard: meraki.DashboardAPI, network_id: str) -> dict:
+    """https://developer.cisco.com/meraki/api-v1/get-network-appliance-firewall-cellular-firewall-rules/
+    ```json
+    {
+        "rules": [
+            {
+                "comment": "Allow TCP traffic to subnet with HTTP servers.",
+                "policy": "allow",
+                "protocol": "tcp",
+                "destPort": "443",
+                "destCidr": "192.168.1.0/24",
+                "srcPort": "Any",
+                "srcCidr": "Any",
+                "syslogEnabled": false
+            }
+        ]
+    }
+    ```
+    """
+    return dashboard.appliance.getNetworkApplianceFirewallCellularFirewallRules(
+        network_id
+    )
+
+
+# @cache_json("cache/getOrganizationConfigTemplates.json")
+def get_organization_config_templates(
+    dashboard: meraki.DashboardAPI, organisation_id: str):
+    """https://developer.cisco.com/meraki/api/get-organization-config-templates/
+    ```json
+    [
+        {
+            "id": "N_24329156",
+            "name": "My config template",
+            "productTypes": [
+                "appliance",
+                "switch",
+                "wireless"
+            ],
+            "timeZone": "America/Los_Angeles"
+        }
+    ]
+    ```
+    """
+    return dashboard.organizations.getOrganizationConfigTemplates(
+        organisation_id
+    )
+
+
+# @cache_json("cache/getDeviceSwitchRoutingInterfaces.json")
+def get_device_switch_routing_interfaces(
+    dashboard: meraki.DashboardAPI, serial: str):
+    """https://developer.cisco.com/meraki/api-v1/get-device-switch-routing-interfaces/
+    ```json
+    [
+        {
+            "interfaceId": "1234",
+            "name": "L3 interface",
+            "subnet": "192.168.1.0/24",
+            "interfaceIp": "192.168.1.2",
+            "multicastRouting": "disabled",
+            "vlanId": 100,
+            "defaultGateway": "192.168.1.1",
+            "ospfSettings": {
+                "area": "0",
+                "cost": 1,
+                "isPassiveEnabled": true
+            },
+            "ospfV3": {
+                "area": "1",
+                "cost": 2,
+                "isPassiveEnabled": true
+            },
+            "ipv6": {
+                "assignmentMode": "static",
+                "address": "1:2:3:4::1",
+                "prefix": "1:2:3:4::/48",
+                "gateway": "1:2:3:4::2"
+            }
+        }
+    ]
+    ```
+    """
+    return dashboard.switch.getDeviceSwitchRoutingInterfaces(
+        serial
+    )
+
+
+# @cache_json("cache/getNetworkSwitchStacks.json")
+def get_network_switch_stacks(
+        dashboard: meraki.DashboardAPI, network_id: str):
+    """https://developer.cisco.com/meraki/api-v1/get-network-switch-stacks/
+    ```json
+    [
+        {
+            "id": "8473",
+            "name": "A cool stack",
+            "serials": [
+                "QBZY-XWVU-TSRQ",
+                "QBAB-CDEF-GHIJ"
+            ]
+        }
+    ]
+    ```
+    """
+    return dashboard.switch.getNetworkSwitchStacks(
+        network_id
+    )
+
+
+# @cache_json("cache/getNetworkSwitchStackRoutingInterfaces.json")
+def get_network_switch_stack_routing_interfaces(
+        dashboard: meraki.DashboardAPI,
+        network_id: str,
+        switch_stack_id: str
+    ):
+    """https://developer.cisco.com/meraki/api-v1/get-network-switch-stack-routing-interfaces/
+    ```json
+    [
+        {
+            "interfaceId": "1234",
+            "name": "L3 interface",
+            "subnet": "192.168.1.0/24",
+            "interfaceIp": "192.168.1.2",
+            "multicastRouting": "disabled",
+            "vlanId": 100,
+            "defaultGateway": "192.168.1.1",
+            "ospfSettings": {
+                "area": "0",
+                "cost": 1,
+                "isPassiveEnabled": true
+            },
+            "ospfV3": {
+                "area": "1",
+                "cost": 2,
+                "isPassiveEnabled": true
+            },
+            "ipv6": {
+                "assignmentMode": "static",
+                "address": "1:2:3:4::1",
+                "prefix": "1:2:3:4::/48",
+                "gateway": "1:2:3:4::2"
+            }
+        }
+    ]
+    ```
+    """
+    return dashboard.switch.getNetworkSwitchStackRoutingInterfaces(
+        network_id,
+        switch_stack_id
     )
