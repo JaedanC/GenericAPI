@@ -185,10 +185,6 @@ class NetBoxChange:
         self.patch_keys.append(patch_key)
 
 
-    def get_keys_inserted(self):
-        return self.patch_keys
-
-    
     def get_keys_not_inserted_from(
             self,
             keys_that_could_be_deleted: List[int],

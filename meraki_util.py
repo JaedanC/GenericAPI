@@ -86,6 +86,32 @@ def get_organization_networks(
     return dashboard.organizations.getOrganizationNetworks(organization_id)
 
 
+# @cache_json("cache/getNetwork.json", verbose=False)
+def get_network(
+    dashboard: meraki.DashboardAPI, network_id: str):
+    """https://developer.cisco.com/meraki/api-v1/get-network/
+    ```json
+    {
+        "id": "N_24329156",
+        "organizationId": "2930418",
+        "name": "Main Office",
+        "productTypes": [
+            "appliance",
+            "switch",
+            "wireless"
+        ],
+        "timeZone": "America/Los_Angeles",
+        "tags": [ "tag1", "tag2" ],
+        "enrollmentString": "my-enrollment-string",
+        "url": "https://n1.meraki.com//n//manage/nodes/list",
+        "notes": "Additional description of the network",
+        "isBoundToConfigTemplate": false
+    }
+    ```
+    """
+    return dashboard.networks.getNetwork(network_id)
+
+
 # @cache_json("cache/getNetworkClients.json", verbose=False)
 # @cache_csv("cache/getNetworkClients.csv", verbose=False)
 def get_network_clients(
@@ -147,6 +173,60 @@ def get_network_clients(
             all_clients.append(client)
     
     return all_clients
+
+
+# @cache_json("cache/getOrganizationWebhooksHttpServers.json")
+def get_organization_webhooks_http_servers(
+        MERAKI_API_KEY: str,
+        organization_id: str
+    ) -> List[dict]:
+    """https://developer.cisco.com/meraki/api-v1/get-organization-webhooks-http-servers/
+    ```json
+    [
+        {
+            "id": "aHR0cHM6Ly93d3cuZXhhbXBsZS5jb20vbXlfY3VzdG9tX3dlYmhvb2s=",
+            "name": "Example Webhook Server",
+            "organizationId": "2930418",
+            "url": "https://www.example.com/my_custom_webhook",
+            "payloadTemplate": {
+                "id": "wpt_00001",
+                "name": "Meraki (included)"
+            }
+        }
+    ]
+    ```
+    """
+    url = f"https://api.meraki.com/api/v1/organizations/{organization_id}/webhooks/httpServers"
+
+    payload = None
+    headers = {
+        "Authorization": "Bearer " + MERAKI_API_KEY,
+        "Accept": "application/json"
+    }
+    response = requests.request('GET', url, headers=headers, data = payload)
+    return json.loads(response.text.encode("utf-8"))
+
+
+# @cache_json("cache/getNetworkWebhooksHttpServers.json")
+def get_network_webhooks_http_servers(
+    dashboard: meraki.DashboardAPI, network_id: str):
+    """https://developer.cisco.com/meraki/api-v1/get-network-webhooks-http-servers/
+    ```json
+    [
+        {
+            "id": "aHR0cHM6Ly93d3cuZXhhbXBsZS5jb20vbXlfY3VzdG9tX3dlYmhvb2s=",
+            "name": "Example Webhook Server",
+            "url": "https://www.example.com/my_custom_webhook",
+            "networkId": "N_12345678",
+            "payloadTemplate": {
+                "payloadTemplateId": "wpt_00001",
+                "name": "Meraki (included)"
+            }
+        }
+    ]
+    ```
+    """
+    return dashboard.networks.getNetworkWebhooksHttpServers(network_id)
 
 
 # @cache_json("cache/getOrganizationApplianceUplinkStatuses.json")
@@ -351,6 +431,27 @@ def get_device_appliance_uplinks_settings(
     return dashboard.appliance.getDeviceApplianceUplinksSettings(serial)
 
 
+# @cache_json("cache/getNetworkAppliancePorts,json", verbose=False)
+def get_network_appliance_ports(
+    dashboard: meraki.DashboardAPI, network_id: str):
+    """https://developer.cisco.com/meraki/api-v1/get-network-appliance-ports/
+    ```json
+    [
+        {
+            "number": 1,
+            "enabled": true,
+            "type": "access",
+            "dropUntaggedTraffic": false,
+            "vlan": 3,
+            "allowedVlans": "all",
+            "accessPolicy": "open"
+        }
+    ]
+    ```
+    """
+    return dashboard.appliance.getNetworkAppliancePorts(network_id)
+
+
 # @cache_json("cache/getNetworkApplianceVlans.json", verbose=False)
 def get_network_appliance_vlans(
     dashboard: meraki.DashboardAPI, network_id: str):
@@ -441,7 +542,6 @@ def get_network_appliance_single_lan(
     ```
     """
     return dashboard.appliance.getNetworkApplianceSingleLan(network_id)
-
 
 
 # @cache_json("cache/getNetworkDevices.json")
@@ -774,6 +874,66 @@ def get_device_switch_routing_interfaces(
     )
 
 
+# @cache_json("cache/getDeviceSwitchPorts.json")
+def get_device_switch_ports(
+    dashboard: meraki.DashboardAPI, serial: str):
+    """https://developer.cisco.com/meraki/api-v1/get-device-switch-ports/
+    ```json
+    [
+        {
+            "portId": "1",
+            "name": "My switch port",
+            "tags": [ "tag1", "tag2" ],
+            "enabled": true,
+            "poeEnabled": true,
+            "type": "access",
+            "vlan": 10,
+            "voiceVlan": 20,
+            "allowedVlans": "1,3,5-10",
+            "isolationEnabled": false,
+            "rstpEnabled": true,
+            "stpGuard": "disabled",
+            "linkNegotiation": "Auto negotiate",
+            "linkNegotiationCapabilities": [
+                "Auto negotiate",
+                "1 Gigabit full duplex (auto)"
+            ],
+            "portScheduleId": "1234",
+            "udld": "Alert only",
+            "accessPolicyType": "Sticky MAC allow list",
+            "accessPolicyNumber": 2,
+            "macAllowList": [
+                "34:56:fe:ce:8e:b0",
+                "34:56:fe:ce:8e:b1"
+            ],
+            "stickyMacAllowList": [
+                "34:56:fe:ce:8e:b0",
+                "34:56:fe:ce:8e:b1"
+            ],
+            "stickyMacAllowListLimit": 5,
+            "stormControlEnabled": true,
+            "adaptivePolicyGroupId": "123",
+            "peerSgtCapable": false,
+            "flexibleStackingEnabled": true,
+            "daiTrusted": false,
+            "profile": {
+                "enabled": false,
+                "id": "1284392014819",
+                "iname": "iname"
+            },
+            "module": { "model": "MA-MOD-4X10G" },
+            "mirror": {
+                "mode": "Not mirroring traffic"
+            }
+        }
+    ]
+    ```
+    """
+    return dashboard.switch.getDeviceSwitchPorts(
+        serial
+    )
+
+
 # @cache_json("cache/getNetworkSwitchStacks.json")
 def get_network_switch_stacks(
         dashboard: meraki.DashboardAPI, network_id: str):
@@ -836,4 +996,52 @@ def get_network_switch_stack_routing_interfaces(
     return dashboard.switch.getNetworkSwitchStackRoutingInterfaces(
         network_id,
         switch_stack_id
+    )
+
+
+# @cache_json("cache/getOrganizationSwitchPortsBySwitch.json")
+def get_organization_switch_ports_by_switch(
+        dashboard: meraki.DashboardAPI,
+        organization_id: str,
+    ):
+    """https://developer.cisco.com/meraki/api/get-organization-switch-ports-by-switch/
+    ```json
+    [
+        {
+            "name": "Example Switch",
+            "serial": "Q555-5555-5555",
+            "mac": "01:23:45:67",
+            "network": {
+                "name": "Example Network",
+                "id": "N_12345"
+            },
+            "model": "MS120-8",
+            "ports": [
+                {
+                    "portId": "1",
+                    "name": "My switch port",
+                    "tags": [ "tag1", "tag2" ],
+                    "enabled": true,
+                    "poeEnabled": true,
+                    "type": "access",
+                    "vlan": 10,
+                    "voiceVlan": 20,
+                    "allowedVlans": "1,3,5-10",
+                    "rstpEnabled": true,
+                    "stpGuard": "disabled",
+                    "linkNegotiation": "Auto negotiate",
+                    "accessPolicyType": "Sticky MAC allow list",
+                    "stickyMacAllowList": [
+                        "34:56:fe:ce:8e:b0",
+                        "34:56:fe:ce:8e:b1"
+                    ],
+                    "stickyMacAllowListLimit": 5
+                }
+            ]
+        }
+    ]
+    ```
+    """
+    return dashboard.switch.getOrganizationSwitchPortsBySwitch(
+        organization_id, total_pages='all'
     )

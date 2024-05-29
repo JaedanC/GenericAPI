@@ -426,7 +426,7 @@ def flatten_json(d: dict, delim: str) -> dict:
     return val
 
 
-def dict_to_csv(json_dict: dict, delim=".") -> str:
+def dict_to_csv(json_dict: List[dict], delim=".") -> str:
     """Flattens and converts a dictionary to a csv using the delimeter to show
     nested content.
 
