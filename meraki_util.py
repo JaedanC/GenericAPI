@@ -747,7 +747,7 @@ def get_device_lldp_cdp(
 # @cache_json("cache/getOrganizationDevices.json")
 # @cache_csv("cache/getOrganizationDevices.csv")
 def get_organization_devices(
-    dashboard: meraki.DashboardAPI, organisation_id: str) -> dict:
+    dashboard: meraki.DashboardAPI, organization_id: str) -> dict:
     """https://developer.cisco.com/meraki/api/get-device-lldp-cdp/
     ```json
     {
@@ -780,7 +780,7 @@ def get_organization_devices(
     ```
     """
     return dashboard.organizations.getOrganizationDevices(
-        organisation_id,
+        organization_id,
         "all"
     )
 
@@ -813,7 +813,7 @@ def get_network_appliance_firewall_cellular_firewall_rules(
 
 # @cache_json("cache/getOrganizationConfigTemplates.json")
 def get_organization_config_templates(
-    dashboard: meraki.DashboardAPI, organisation_id: str):
+    dashboard: meraki.DashboardAPI, organization_id: str):
     """https://developer.cisco.com/meraki/api/get-organization-config-templates/
     ```json
     [
@@ -831,7 +831,7 @@ def get_organization_config_templates(
     ```
     """
     return dashboard.organizations.getOrganizationConfigTemplates(
-        organisation_id
+        organization_id
     )
 
 
