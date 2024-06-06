@@ -531,6 +531,13 @@ def safe_open_w(path: str, **kwargs):
     return open(path, "w", **kwargs)
 
 
+def safe_open_wb(path: str, **kwargs):
+    """Open "path" for writing, creating any parent directories as needed.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return open(path, "wb", **kwargs)
+
+
 def cache_json(file_path: str, verbose=False):
     """Decorator to cache the result of the function as a json file.
 
