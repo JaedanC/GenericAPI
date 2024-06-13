@@ -747,41 +747,39 @@ def get_device_lldp_cdp(
 # @cache_json("cache/getOrganizationDevices.json")
 # @cache_csv("cache/getOrganizationDevices.csv")
 def get_organization_devices(
-    dashboard: meraki.DashboardAPI, organization_id: str) -> dict:
-    """https://developer.cisco.com/meraki/api/get-device-lldp-cdp/
+        dashboard: meraki.DashboardAPI, organization_id: str, **kwargs) -> dict:
+    """https://developer.cisco.com/meraki/api-v1/get-organization-devices/
     ```json
-    {
-        "sourceMac": "00:11:22:33:44:55",
-        "ports": {
-            "8": {
-                "cdp": {
-                    "deviceId": "e0553d8cdf53",
-                    "portId": "Port 10",
-                    "address": "00:11:22:33:44:55",
-                    "sourcePort": "8"
+    [
+        {
+            "name": "My AP",
+            "lat": 37.4180951010362,
+            "lng": -122.098531723022,
+            "address": "1600 Pennsylvania Ave",
+            "notes": "My AP's note",
+            "tags": [ "recently-added" ],
+            "networkId": "N_24329156",
+            "serial": "Q234-ABCD-5678",
+            "model": "MR34",
+            "imei": "123456789000000",
+            "mac": "00:11:22:33:44:55",
+            "lanIp": "1.2.3.4",
+            "firmware": "wireless-25-14",
+            "productType": "wireless",
+            "details": [
+                {
+                    "name": "Catalyst serial",
+                    "value": "123ABC"
                 }
-            },
-            "12": {
-                "cdp": {
-                    "deviceId": "e0553d8cdf53",
-                    "portId": "Port 11",
-                    "address": "00:11:22:33:44:55",
-                    "sourcePort": "12"
-                },
-                "lldp": {
-                    "systemName": "Meraki MS350-24X - Phineas",
-                    "portId": "11",
-                    "managementAddress": "00:11:22:33:44:55",
-                    "sourcePort": "12"
-                }
-            }
+            ]
         }
-    }
+    ]
     ```
     """
     return dashboard.organizations.getOrganizationDevices(
         organization_id,
-        "all"
+        "all",
+        **kwargs
     )
 
 
