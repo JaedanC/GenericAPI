@@ -54,7 +54,7 @@ class NetBoxLog:
                 message TEXT NOT NULL
             );
         """)
-    
+
     def info(self, message: str):
         cur = self.con.cursor()
         cur.execute("""
@@ -94,14 +94,14 @@ class NetBoxLog:
             (datetime.datetime.now(), endpoint.path if endpoint is not None else "", error_message)
         )
         self.con.commit()
-    
+
 
 class NetBoxDeleteOrganiser:
     def __init__(self, logger: NetBoxLog):
         self.deletes: Dict[APIResource, List[int]] = {}
         self.order_to_delete = None
         self.logger = logger
-    
+
     def add_delete(
             self,
             endpoint: APIResource,
@@ -112,12 +112,12 @@ class NetBoxDeleteOrganiser:
             self.deletes[endpoint] += keys_to_delete
         else:
             self.deletes[endpoint] = keys_to_delete
-    
+
     def delete_in_order(self, *endpoints: List[APIResource], skip_prompt=False):
         assert len(set(endpoints)) == len(self.deletes)
         for endpoint in endpoints:
             assert endpoint in self.deletes
-        
+
         for endpoint in endpoints:
             keys_to_delete = self.deletes[endpoint]
             for deleting_key in keys_to_delete:
@@ -140,18 +140,14 @@ class NetBoxChange:
     def __init__(self, logger: NetBoxLog):
         self.patch_keys = []
         self.logger = logger
-    
+
     def insert(self, endpoint: APIResource, data: dict, patch_key: int | None, get=False):
         # POST
         if patch_key is None:
             print("Creating new")
             print(json.dumps(data, indent=4))
-            try:
-                results = endpoint.create(**data).data
-                self.logger.post(endpoint, data)
-            except NetBoxException as e:
-                self.logger.error(endpoint, str(e))
-                raise e
+            self.logger.post(endpoint, data)
+            results = endpoint.create(**data).data
 
             print("Response")
             print(json.dumps(results, indent=4))
@@ -169,22 +165,18 @@ class NetBoxChange:
         print("Patching {}".format(endpoint))
         print("Modifying {}".format(patch_key))
         print(json.dumps(data, indent=4))
-        try:
-            results = endpoint.update(patch_key, **data).data
-            self.logger.patch(endpoint, patch_key, data)
-        except NetBoxException as e:
-            self.logger.error(endpoint, str(e))
-            raise e
-        
+        results = endpoint.update(patch_key, **data).data
+        self.logger.patch(endpoint, patch_key, data)
+
         print("Response")
         print(json.dumps(results, indent=4))
         return results
-    
+
 
     def mark_as_inserted(self, patch_key: int):
         self.patch_keys.append(patch_key)
-    
-    
+
+
     def get_keys_inserted(self):
         return self.patch_keys
 
@@ -217,10 +209,10 @@ class NetBoxChange:
             self.get_keys_not_inserted_from(keys_that_could_be_deleted),
             unsafe_skip
         )
-    
+
 
     def delete_keys(
-            self, 
+            self,
             endpoint: APIResource,
             keys_to_delete: List[int],
             unsafe_skip=False
@@ -246,7 +238,7 @@ def get_tag_slugs(tags: List[dict]) -> List[dict]:
     if tags is None:
         return []
     return [{"slug": t["slug"]} for t in tags]
-    
+
 
 def add_tag(tags: List[dict], tag_to_add: dict) -> List[dict]:
     if tags is None:
