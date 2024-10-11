@@ -55,7 +55,10 @@ class NetBoxLog:
             );
         """)
 
-    def info(self, message: str):
+    def info(self, message: str, io=True):
+        if io:
+            print(message)
+
         cur = self.con.cursor()
         cur.execute("""
             INSERT INTO info VALUES (?, ?)""",
@@ -87,7 +90,10 @@ class NetBoxLog:
         )
         self.con.commit()
 
-    def error(self, endpoint: APIResource, error_message: str):
+    def error(self, endpoint: APIResource, error_message: str, io=True):
+        if io:
+            print(error_message)
+
         cur = self.con.cursor()
         cur.execute("""
             INSERT INTO errors VALUES (?, ?, ?)""",
@@ -227,11 +233,31 @@ class NetBoxChange:
                 endpoint.delete(deleting_key)
                 self.logger.delete(endpoint, are_you_sure_deleting)
             except NetBoxException as e:
-                self.logger.error(endpoint, str(e))
+                self.logger.error(endpoint, f"Error. Tried to delete {are_you_sure_deleting}\n{e}")
                 raise e
             except KeyboardInterrupt:
                 pass
         return keys_to_delete
+
+    def delete_key_if_not_inserted(
+            self,
+            endpoint: APIResource,
+            key_that_could_be_deleted: int,
+            unsafe_skip=False,
+        ):
+        if key_that_could_be_deleted in self.patch_keys:
+            return
+
+        print(f"Deleting {key_that_could_be_deleted} in Netbox.")
+        are_you_sure_deleting = endpoint.get(key_that_could_be_deleted).data
+        print(json.dumps(are_you_sure_deleting, indent=4))
+        try:
+            if not unsafe_skip:
+                input("Press enter to delete the object or CTRL+C to cancel.")
+            endpoint.delete(key_that_could_be_deleted)
+            self.logger.delete(endpoint, are_you_sure_deleting)
+        except KeyboardInterrupt:
+            pass
 
 
 def get_tag_slugs(tags: List[dict]) -> List[dict]:
