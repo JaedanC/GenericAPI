@@ -1,7 +1,10 @@
-import meraki
-import os
-from .api import cache_csv, cache_json
 from typing import List
+import json
+import os
+
+import requests
+import meraki
+from .api import cache_csv, cache_json
 
 
 ONE_DAY = 86400
@@ -20,10 +23,10 @@ def init(apikey: str) -> meraki.DashboardAPI:
     return meraki.DashboardAPI(apikey, print_console=False, log_file_prefix="logs/")
 
 
-def listify(object):
-    if isinstance(object, list):
-        return object
-    return [object]
+def listify(obj):
+    if isinstance(obj, list):
+        return obj
+    return [obj]
 
 
 # @cache_json("cache/getOrganizations.json")
@@ -208,7 +211,7 @@ def get_organization_webhooks_http_servers(
         "Authorization": "Bearer " + MERAKI_API_KEY,
         "Accept": "application/json"
     }
-    response = requests.request('GET', url, headers=headers, data = payload)
+    response = requests.request('GET', url, headers=headers, data = payload, timeout=60)
     return json.loads(response.text.encode("utf-8"))
 
 

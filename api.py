@@ -8,6 +8,7 @@ import io
 import ipaddress
 import json
 import os
+import time
 import traceback
 
 
@@ -232,11 +233,14 @@ class APIRequest:
                 raise ValueError("The Content type does not match a known value")
 
         # Add any queries to the URL
+        url = self._url
+
         if self._content_type == ContentType.UrlEncoded and self._query_parameters is not None:
             raise ValueError("Can't have UrlEncoded and Query parameters at the same time")
         elif self._query_parameters is not None:
-            self._url, _ = split_url_and_query(self._url)
-            self._url += "?" + dict_to_url_query(self._query_parameters)
+            url, queries = split_url_and_query(self._url)
+            self._query_parameters.update(queries)
+            url += "?" + dict_to_url_query(self._query_parameters)
 
         # Overwrite any existing is fine
         if self._content_type == ContentType.ApplicationJson:
@@ -245,24 +249,24 @@ class APIRequest:
             self._headers["Content-Type"] = "application/x-www-form-urlencoded"
 
         if self._method == Method.Get:
-            return APIResponse(self, requests.get(self._url, headers=self._headers, **kwargs))
+            return APIResponse(self, requests.get(url, headers=self._headers, **kwargs))
         elif self._method == Method.Post:
             if body is not None:
-                return APIResponse(self, requests.post(self._url, headers=self._headers, data=body, **kwargs))
+                return APIResponse(self, requests.post(url, headers=self._headers, data=body, **kwargs))
             else:
-                return APIResponse(self, requests.post(self._url, headers=self._headers, **kwargs))
+                return APIResponse(self, requests.post(url, headers=self._headers, **kwargs))
         elif self._method == Method.Delete:
-            return APIResponse(self, requests.delete(self._url, headers=self._headers, **kwargs))
+            return APIResponse(self, requests.delete(url, headers=self._headers, **kwargs))
         elif self._method == Method.Put:
             if body is not None:
-                return APIResponse(self, requests.put(self._url, headers=self._headers, data=body, **kwargs))
+                return APIResponse(self, requests.put(url, headers=self._headers, data=body, **kwargs))
             else:
-                return APIResponse(self, requests.put(self._url, headers=self._headers, **kwargs))
+                return APIResponse(self, requests.put(url, headers=self._headers, **kwargs))
         elif self._method == Method.Patch:
             if body is not None:
-                return APIResponse(self, requests.patch(self._url, headers=self._headers, data=body, **kwargs))
+                return APIResponse(self, requests.patch(url, headers=self._headers, data=body, **kwargs))
             else:
-                return APIResponse(self, requests.patch(self._url, headers=self._headers, **kwargs))
+                return APIResponse(self, requests.patch(url, headers=self._headers, **kwargs))
 
     def execute_odata(self, odata_next_link_key: str | List[str], odata_value_key, url_prefix=""):
         if isinstance(odata_next_link_key, str):
@@ -626,6 +630,20 @@ def safe_open_wb(path: str, **kwargs):
     return open(path, "wb", **kwargs)
 
 
+def safe_open_w_blocking(path: str, **kwargs):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    try:
+        while True:
+            try:
+                return open(path, "w", **kwargs)
+            except IOError as e:
+                print(f"Error saving to '{path}': {e}")
+                input("Press Enter to try again: ")
+    except KeyboardInterrupt:
+        print("Skipping save")
+
+
 def cache_json(file_path: str, verbose=False):
     """Decorator to cache the result of the function as a json file.
 
@@ -648,20 +666,22 @@ def cache_json(file_path: str, verbose=False):
     return decorator
 
 
-def cache_csv(file_path: str, verbose=False):
+def cache_csv(file_path: str, verbose=False, blocking=False):
     """Decorator to cache the result of the function as a csv. Flattens the
     dictionary first.
 
     Args:
         file_path (str): The file to save to
     """
+    open_func = safe_open_w_blocking if blocking else safe_open_w
+
     def decorator(func_returning_dict: Callable[[], dict]):
         def wrapper(*args, **kwargs):
             contents = func_returning_dict(*args, **kwargs)
 
             if verbose:
                 print("Saving csv", file_path)
-            with safe_open_w(file_path, encoding="utf-8") as f:
+            with open_func(file_path, encoding="utf-8") as f:
                 f.write(dict_to_csv(contents))
             return contents
         return wrapper
