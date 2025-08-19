@@ -1,64 +1,84 @@
 from __future__ import annotations
 from enum import Enum
 from io import StringIO
+from typing import Callable, Any, List, Set, Tuple, Dict, Optional
 import base64
-import copy
 import csv
 import io
 import ipaddress
 import json
 import os
 import traceback
+
+
 import requests
-from typing import Callable, Any, List, Set
 
 
 class APIResponse:
     def __init__(self, req: APIRequest, requests_resp: requests.Response):
-        self.__req: APIRequest = req
-        self.__requests_resp: requests.Response = requests_resp
+        self._req: APIRequest = req
+        self._requests_resp: requests.Response = requests_resp
 
     def text(self):
-        return self.__requests_resp.text
+        return self._requests_resp.text
 
     def json_pretty(self, indent=4):
         try:
-            json_obj = json.loads(self.__requests_resp.text)
+            json_obj = json.loads(self._requests_resp.text)
             return json.dumps(json_obj, indent=indent)
         except json.decoder.JSONDecodeError:
-            return self.__requests_resp.text
+            return self._requests_resp.text
 
     def json_dict(self):
         try:
-            return json.loads(self.__requests_resp.text)
+            return json.loads(self._requests_resp.text)
         except json.decoder.JSONDecodeError as e:
             print(e)
-            print(self.__requests_resp.text)
+            print(self._requests_resp.text)
             raise e
 
     def status_code(self):
-        return self.__requests_resp.status_code
+        return self._requests_resp.status_code
 
     def request(self):
-        return self.__req
+        return self._req
 
     def raw(self):
-        return self.__requests_resp
+        return self._requests_resp
 
 
 class ODataResponse:
     def __init__(self, req: APIRequest, values):
-        self.__req: APIRequest = req
-        self.__values = values
+        self._req: APIRequest = req
+        self._values = values
 
     def json_dict(self):
-        return self.__values
+        return self._values
 
     def json_pretty(self, indent=4):
-        return json.dumps(self.__values, indent=indent)
+        return json.dumps(self._values, indent=indent)
 
     def request(self):
-        return self.__req
+        return self._req
+
+
+class APIResponseMultiple:
+    def __init__(self, all_requests: List[APIRequest], all_responses: List[APIResponse], results: List[dict]):
+        self._all_req: APIRequest = all_requests
+        self._all_res: APIResponse = all_responses
+        self._results: List[dict] = results
+
+    def json_dict(self):
+        return self._results
+
+    def json_pretty(self, indent=4):
+        return json.dumps(self._results, indent=indent)
+
+    def requests(self):
+        return self._all_req
+
+    def responses(self):
+        return self._all_res
 
 
 class ContentType(Enum):
@@ -76,79 +96,82 @@ class Method(Enum):
 
 class APIRequest:
     def __init__(self, url: str):
-        self.__base_url: str = url
-        self.__url: str = url
-        self.__parameters: dict | None = None
-        self.__content_type: ContentType | None = None
-        self.__headers = {}
-        self.__method: Method | None = None
-        self.__query_parameters: dict | None = None
+        self.set_url(url)
+        self._parameters: dict | None = None
+        self._content_type: ContentType | None = None
+        self._headers = {}
+        self._method: Method | None = None
+        self._query_parameters: dict | None = None
 
     def __repr__(self):
         method_text = "(No method set)"
-        if self.__method == Method.Get:
+        if self._method == Method.Get:
             method_text = "GET"
-        elif self.__method == Method.Post:
+        elif self._method == Method.Post:
             method_text = "POST"
-        elif self.__method == Method.Delete:
+        elif self._method == Method.Delete:
             method_text = "DELETE"
-        elif self.__method == Method.Put:
+        elif self._method == Method.Put:
             method_text = "PUT"
-        elif self.__method == Method.Patch:
+        elif self._method == Method.Patch:
             method_text = "PATCH"
 
         content_type_text = "(No content-type set)"
-        if self.__content_type == ContentType.ApplicationJson:
+        if self._content_type == ContentType.ApplicationJson:
             content_type_text = "application/json"
-        elif self.__content_type == ContentType.UrlEncoded:
+        elif self._content_type == ContentType.UrlEncoded:
             content_type_text = "application/x-www-form-urlencoded"
 
-        headers = self.__headers.copy()
-        if self.__content_type is not None:
+        headers = self._headers.copy()
+        if self._content_type is not None:
             headers["Content-Type"] = content_type_text
 
         headers_text = json.dumps(headers, indent=4)
 
 
-        url = self.__url
-        if self.__query_parameters is not None:
-            url += "?" + dict_to_url_query(self.__query_parameters)
+        url = self._url
+        if self._query_parameters is not None:
+            url += "?" + dict_to_url_query(self._query_parameters)
 
-        if self.__method == Method.Get:
+        if self._method == Method.Get:
             return f"{method_text} {url}\n" + \
             "Headers:\n" + \
             headers_text
-        if (self.__method == Method.Post or self.__method == Method.Delete) and self.__parameters is None:
+        if (self._method == Method.Post or self._method == Method.Delete) and self._parameters is None:
             return f"{method_text} {url}\n" + \
             "Headers:\n" + \
             headers_text
-        elif self.__method == Method.Post or self.__method == Method.Delete:
+        elif self._method == Method.Post or self._method == Method.Delete:
             return f"{method_text} {url}\n" + \
             "Headers:\n" + \
             headers_text + "\n" + \
             "Body:\n" + \
-            json.dumps(self.__parameters, indent=4)
+            json.dumps(self._parameters, indent=4)
+
+    def set_url(self, url: str):
+        self._base_url = url
+        self._url = url
 
     def set_method(self, method: Method):
-        if self.__method is not None:
+        if self._method is not None:
             raise ValueError("Cannot set the method twice")
-        self.__method = method
+        self._method = method
         return self
 
     def set_content_type(self, content_type: ContentType):
-        if self.__method == Method.Get:
+        if self._method == Method.Get:
             raise ValueError("Cannot set the content-type for get requests")
-        if  self.__method == Method.Delete:
+        if  self._method == Method.Delete:
             raise ValueError("Cannot set the content-type for delete requests")
-        self.__content_type = content_type
+        self._content_type = content_type
         return self
 
     def add_parameter(self, key: str, value):
-        if key in self.__headers:
+        if key in self._headers:
             raise ValueError("Cannot set a parameter twice")
-        if self.__parameters is None:
-            self.__parameters = {}
-        self.__parameters[key] = value
+        if self._parameters is None:
+            self._parameters = {}
+        self._parameters[key] = value
         return self
 
     def add_parameters(self, params: dict):
@@ -157,13 +180,13 @@ class APIRequest:
         return self
 
     def add_query(self, key, value):
-        if self.__query_parameters is None:
-            self.__query_parameters = {}
-        self.__query_parameters[key] = value
+        if self._query_parameters is None:
+            self._query_parameters = {}
+        self._query_parameters[key] = value
         return self
 
     def add_header(self, header: str, value: str):
-        self.__headers[header] = value
+        self._headers[header] = value
         return self
 
     def set_bearer_authorization(self, token: str):
@@ -178,67 +201,68 @@ class APIRequest:
         return self.add_header("Authorization", "Basic " + base64_message)
 
     def execute(self, **kwargs):
-        if self.__method == None:
+        if self._method is None:
             raise ValueError("A method must be set")
 
-        if self.__content_type is None and self.__parameters is not None:
+        if self._content_type is None and self._parameters is not None:
             raise ValueError("A content Type must be set when using parameters")
 
-        if self.__content_type is not None and self.__parameters is None:
+        if self._content_type is not None and self._parameters is None:
             raise ValueError("Parameter must be added when setting a content type")
 
-        if self.__parameters is not None and self.__method == Method.Get:
+        if self._parameters is not None and self._method == Method.Get:
             raise ValueError("Cannot have parameters with a get request")
 
-        if self.__parameters is not None and self.__method == Method.Delete:
+        if self._parameters is not None and self._method == Method.Delete:
             raise ValueError("Cannot have parameters with a delete request")
 
-        if self.__content_type is not None and self.__method == Method.Get:
+        if self._content_type is not None and self._method == Method.Get:
             raise ValueError("Cannot set the content type for a get request")
 
-        if self.__content_type is not None and self.__method == Method.Delete:
+        if self._content_type is not None and self._method == Method.Delete:
             raise ValueError("Cannot set the content type for a delete request")
 
         body = None
-        if self.__parameters is not None:
-            if self.__content_type == ContentType.ApplicationJson:
-                body = json.dumps(self.__parameters)
-            elif self.__content_type == ContentType.UrlEncoded:
-                body = dict_to_url_query(self.__parameters)
+        if self._parameters is not None:
+            if self._content_type == ContentType.ApplicationJson:
+                body = json.dumps(self._parameters)
+            elif self._content_type == ContentType.UrlEncoded:
+                body = dict_to_url_query(self._parameters)
             else:
                 raise ValueError("The Content type does not match a known value")
 
         # Add any queries to the URL
-        if self.__content_type == ContentType.UrlEncoded and self.__query_parameters is not None:
+        if self._content_type == ContentType.UrlEncoded and self._query_parameters is not None:
             raise ValueError("Can't have UrlEncoded and Query parameters at the same time")
-        elif self.__query_parameters is not None:
-            self.__url += "?" + dict_to_url_query(self.__query_parameters)
+        elif self._query_parameters is not None:
+            self._url, _ = split_url_and_query(self._url)
+            self._url += "?" + dict_to_url_query(self._query_parameters)
 
         # Overwrite any existing is fine
-        if self.__content_type == ContentType.ApplicationJson:
-            self.__headers["Content-Type"] = "application/json"
-        elif self.__content_type == ContentType.UrlEncoded:
-            self.__headers["Content-Type"] = "application/x-www-form-urlencoded"
+        if self._content_type == ContentType.ApplicationJson:
+            self._headers["Content-Type"] = "application/json"
+        elif self._content_type == ContentType.UrlEncoded:
+            self._headers["Content-Type"] = "application/x-www-form-urlencoded"
 
-        if self.__method == Method.Get:
-            return APIResponse(self, requests.get(self.__url, headers=self.__headers, **kwargs))
-        elif self.__method == Method.Post:
+        if self._method == Method.Get:
+            return APIResponse(self, requests.get(self._url, headers=self._headers, **kwargs))
+        elif self._method == Method.Post:
             if body is not None:
-                return APIResponse(self, requests.post(self.__url, headers=self.__headers, data=body, **kwargs))
+                return APIResponse(self, requests.post(self._url, headers=self._headers, data=body, **kwargs))
             else:
-                return APIResponse(self, requests.post(self.__url, headers=self.__headers, **kwargs))
-        elif self.__method == Method.Delete:
-            return APIResponse(self, requests.delete(self.__url, headers=self.__headers, **kwargs))
-        elif self.__method == Method.Put:
+                return APIResponse(self, requests.post(self._url, headers=self._headers, **kwargs))
+        elif self._method == Method.Delete:
+            return APIResponse(self, requests.delete(self._url, headers=self._headers, **kwargs))
+        elif self._method == Method.Put:
             if body is not None:
-                return APIResponse(self, requests.put(self.__url, headers=self.__headers, data=body, **kwargs))
+                return APIResponse(self, requests.put(self._url, headers=self._headers, data=body, **kwargs))
             else:
-                return APIResponse(self, requests.put(self.__url, headers=self.__headers, **kwargs))
-        elif self.__method == Method.Patch:
+                return APIResponse(self, requests.put(self._url, headers=self._headers, **kwargs))
+        elif self._method == Method.Patch:
             if body is not None:
-                return APIResponse(self, requests.patch(self.__url, headers=self.__headers, data=body, **kwargs))
+                return APIResponse(self, requests.patch(self._url, headers=self._headers, data=body, **kwargs))
             else:
-                return APIResponse(self, requests.patch(self.__url, headers=self.__headers, **kwargs))
+                return APIResponse(self, requests.patch(self._url, headers=self._headers, **kwargs))
 
     def execute_odata(self, odata_next_link_key: str | List[str], odata_value_key, url_prefix=""):
         if isinstance(odata_next_link_key, str):
@@ -255,22 +279,73 @@ class APIRequest:
                 if next_link is None:
                     break
 
-                self.__url = self.__base_url
+                self._url = self._base_url
                 # If the next_link has query parameters, then we need to make
                 # the query parameters are .updated
                 if "?" in next_link:
                     _, query = next_link.split("?")
                     next_link_queries = {k: v for k, v in [q.split("=") for q in query.split("&")]}
-                    if self.__query_parameters is None:
-                        self.__query_parameters = {}
-                    self.__query_parameters.update(next_link_queries)
-                    self.__url = self.__base_url + url_prefix
+                    if self._query_parameters is None:
+                        self._query_parameters = {}
+                    self._query_parameters.update(next_link_queries)
+                    self._url = self._base_url + url_prefix
                 else:
-                    self.__url = self.__base_url + url_prefix + next_link
+                    self._url = self._base_url + url_prefix + next_link
         except KeyboardInterrupt:
             print()
             print("Interrupting")
         return ODataResponse(self, results)
+
+    def execute_multiple(self, value_key: str, next_query_func: Callable[[APIRequest, APIResponse], Optional[APIRequest]]):
+        req = self
+        all_req = []
+        all_res = []
+        results = []
+        try:
+            while True:
+                all_req.append(req)
+                res: APIResponse = req.execute()
+                all_res.append(res)
+
+                res_json = res.json_dict()
+                if value_key not in res_json:
+                    break
+
+                results += res_json[value_key]
+
+                req = next_query_func(req, res)
+                if req is None:
+                    break
+        except KeyboardInterrupt:
+            print()
+            print("Interrupting")
+
+        return APIResponseMultiple(all_req, all_res, results)
+
+
+
+    def serialise(self):
+        return {
+            "_base_url":         self._base_url,
+            "_url":              self._url,
+            "_parameters":       self._parameters,
+            "_content_type":     self._content_type,
+            "_headers":          self._headers,
+            "_method":           self._method,
+            "_query_parameters": self._query_parameters,
+        }
+
+    @staticmethod
+    def from_json(query_json: dict) -> APIRequest:
+        req = APIRequest(None)
+        req._base_url = query_json["_base_url"]
+        req._url = query_json["_url"]
+        req._parameters = query_json["_parameters"]
+        req._content_type = query_json["_content_type"]
+        req._headers = query_json["_headers"]
+        req._method = query_json["_method"]
+        req._query_parameters = query_json["_query_parameters"]
+        return req
 
 
 class RelaxedDictionary:
@@ -485,6 +560,18 @@ def dict_to_url_query(d: dict) -> str:
     return "&".join(queries)
 
 
+def split_url_and_query(url: str) -> Tuple[str, Dict[str, str]]:
+    if "?" not in url:
+        return url, {}
+
+    url, query_text = url.split("?")
+    queries = {}
+    for query in query_text.split("&"):
+        key, value = query.split("=")
+        queries[key] = value
+    return url, queries
+
+
 def nested_get(dictionary: dict, *keys, default_value=None):
     """
     Will attempt to continue to getting values from nested dictionaries
@@ -628,10 +715,10 @@ def __create_user():
     print(res.json_pretty())
 
 
-def main():
+def __main():
     # __get_user()
     __create_user()
 
 
 if __name__ == "__main__":
-    main()
+    __main()

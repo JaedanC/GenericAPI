@@ -115,7 +115,7 @@ def get_network(
 # @cache_json("cache/getNetworkClients.json", verbose=False)
 # @cache_csv("cache/getNetworkClients.csv", verbose=False)
 def get_network_clients(
-    dashboard: meraki.DashboardAPI, network_ids: List[str] | str, timespan):
+    dashboard: meraki.DashboardAPI, networks: List[dict], timespan):
     """https://developer.cisco.com/meraki/api-v1/get-network-clients/
     ```json
     [
@@ -152,13 +152,15 @@ def get_network_clients(
     ]
     ```
     """
-    network_ids = listify(network_ids)
-    
+    networks = listify(networks)
+    networks.sort(key=lambda n: n["name"])
+
     all_clients = []
-    for network_id in network_ids:
+    for i, network in enumerate(networks):
+        print("{}/{}: {}".format(i + 1, len(networks), network["name"]))
         try:
             network_clients = dashboard.networks.getNetworkClients(
-                network_id,
+                network["id"],
                 total_pages="all",
                 perPage=500,
                 timespan=timespan
@@ -169,9 +171,12 @@ def get_network_clients(
 
         for client in network_clients:
             client: dict
-            client.update({"network_id": network_id})
+            client.update({
+                "network_id": network["id"],
+                "network":    network["name"],
+            })
             all_clients.append(client)
-    
+
     return all_clients
 
 
@@ -273,7 +278,10 @@ def get_organization_appliance_uplink_statuses(
 
 # @cache_json("cache/getOrganizationDevicesPowerModulesStatusesByDevice.json")
 def get_organization_devices_power_modules_statuses_by_device(
-    dashboard: meraki.DashboardAPI, organization_id: int, **kwargs):
+        dashboard: meraki.DashboardAPI,
+        organization_id: int,
+        **kwargs,
+    ):
     """https://developer.cisco.com/meraki/api-latest/get-organization-devices-power-modules-statuses-by-device/
     ```json
     [
@@ -296,7 +304,11 @@ def get_organization_devices_power_modules_statuses_by_device(
     ]
     ```
     """
-    return dashboard.organizations.getOrganizationDevicesPowerModulesStatusesByDevice(organization_id, "all", **kwargs)
+    return dashboard.organizations.getOrganizationDevicesPowerModulesStatusesByDevice(
+        organization_id,
+        "all",
+        **kwargs
+    )
 
 
 # @cache_json("cache/getDeviceApplianceDhcpSubnets.json")
@@ -432,7 +444,7 @@ def get_device_appliance_uplinks_settings(
 
 
 # @cache_json("cache/getDeviceSwitchPortsStatuses.json")
-def get_device_switch_ports_statuses(dashboard: meraki.DashboardAPI, serial: str):
+def get_device_switch_ports_statuses(dashboard: meraki.DashboardAPI, serial: str, **kwargs):
     """https://developer.cisco.com/meraki/api-v1/get-device-switch-ports-statuses/
     ```json
     [
@@ -506,7 +518,7 @@ def get_device_switch_ports_statuses(dashboard: meraki.DashboardAPI, serial: str
     ]
     ```
     """
-    return dashboard.switch.getDeviceSwitchPortsStatuses(serial)
+    return dashboard.switch.getDeviceSwitchPortsStatuses(serial, **kwargs)
 
 
 # @cache_json("cache/getNetworkAppliancePorts,json", verbose=False)
@@ -533,7 +545,7 @@ def get_network_appliance_ports(
 # @cache_json("cache/getNetworkApplianceVlans.json", verbose=False)
 def get_network_appliance_vlans(
     dashboard: meraki.DashboardAPI, network_id: str):
-    """https://developer.cisco.com/meraki/api/get-network-appliance-vlans/
+    """https://developer.cisco.com/meraki/api-v1/get-network-appliance-vlans/
     ```json
     [
         {
@@ -652,7 +664,7 @@ def get_network_devices(dashboard: meraki.DashboardAPI, network_id: str):
     """
     return dashboard.networks.getNetworkDevices(network_id)
 
- 
+
 # @cache_json("cache/getOrganizationApplianceVpnThirdPartyVPNPeers.json")
 def get_organization_appliance_vpn_third_party_vpn_peers(
     dashboard: meraki.DashboardAPI, organization_id: str):
@@ -822,7 +834,7 @@ def get_device_lldp_cdp(
     )
 
 
-# @cache_json("cache/getOrganizationDevices.json")
+@cache_json("cache/getOrganizationDevices.json")
 # @cache_csv("cache/getOrganizationDevices.csv")
 def get_organization_devices(
         dashboard: meraki.DashboardAPI, organization_id: str, **kwargs) -> dict:
@@ -950,7 +962,7 @@ def get_device_switch_routing_interfaces(
     )
 
 
-# @cache_json("cache/getDeviceSwitchPorts.json")
+@cache_json("cache/getDeviceSwitchPorts.json")
 def get_device_switch_ports(
     dashboard: meraki.DashboardAPI, serial: str):
     """https://developer.cisco.com/meraki/api-v1/get-device-switch-ports/
@@ -1120,4 +1132,470 @@ def get_organization_switch_ports_by_switch(
     """
     return dashboard.switch.getOrganizationSwitchPortsBySwitch(
         organization_id, total_pages='all'
+    )
+
+
+# @cache_json("cache/getNetworkClientsOverview.json")
+# @cache_csv("cache/getNetworkClientsOverview.csv")
+def get_network_clients_application_usage(
+        dashboard: meraki.DashboardAPI,
+        network_id: str,
+        clients: List[str],
+        **kwargs,
+    ):
+    """https://developer.cisco.com/meraki/api-v1/get-network-clients-application-usage/
+    ```json
+    [
+        {
+            "clientId": "k74272e",
+            "clientIp": "1.2.3.4",
+            "clientMac": "00:11:22:33:44:55",
+            "applicationUsage": [
+                {
+                    "application": "Google",
+                    "received": 383,
+                    "sent": 56
+                }
+            ]
+        }
+    ]
+
+    Modified to below
+    [
+        {
+            "clientId": "k74272e",
+            "clientIp": "1.2.3.4",
+            "clientMac": "00:11:22:33:44:55",
+            "application": "Google",
+            "received": 383,
+            "sent": 56
+        }
+    ]
+
+    ```
+    """
+    client_usage_aggregated = []
+    step = 80
+    for i in range(0, len(clients), step):
+        print("Querying clients: {} to {} of {}".format(i, i + step, len(clients)))
+        client_usage_aggregated += dashboard.networks.getNetworkClientsApplicationUsage(
+            network_id,
+            ",".join(clients[i:i + step]),
+            total_pages='all',
+            **kwargs
+        )
+
+    unfolded = []
+    for client in client_usage_aggregated:
+        for application in client["applicationUsage"]:
+            unfolded.append({
+                "clientId":    client["clientId"],
+                "clientIp":    client["clientIp"],
+                "clientMac":   client["clientMac"],
+                "application": application["application"],
+                "received":    application["received"],
+                "sent":        application["sent"],
+            })
+
+    return unfolded
+
+
+# @cache_json("cache/getOrganizationApplianceUplinksUsageByNetwork.json")
+def get_organization_appliance_uplinks_usage_by_network(
+        dashboard: meraki.DashboardAPI,
+        organization_id: str,
+        **kwargs
+    ) -> List[dict]:
+    """
+    https://developer.cisco.com/meraki/api-v1/get-organization-appliance-uplinks-usage-by-network/
+    ```json
+    [
+        {
+            "networkId": "N_24329156",
+            "name": "Main Office",
+            "byUplink": [
+                {
+                    "serial": "Q234-ABCD-5678",
+                    "interface": "wan1",
+                    "sent": 200,
+                    "received": 400
+                }
+            ]
+        }
+    ]
+    ```
+    """
+    return dashboard.appliance.getOrganizationApplianceUplinksUsageByNetwork(
+        organization_id,
+        **kwargs
+    )
+
+# @cache_json("cache/getNetworkApplianceUplinksUsageHistory.json")
+def get_network_appliance_uplinks_usage_history(
+        dashboard: meraki.DashboardAPI,
+        network_id: str,
+        **kwargs
+    ):
+    """
+    https://developer.cisco.com/meraki/api-v1/get-network-appliance-uplinks-usage-history/
+    ```json
+    [
+        {
+            "startTime": "2021-07-22T02:00:00Z",
+            "endTime": "2021-07-22T03:00:00Z",
+            "byInterface": [
+                {
+                    "interface": "wan1",
+                    "sent": 1562063,
+                    "received": 9528787
+                },
+                {
+                    "interface": "wan2",
+                    "sent": 396646,
+                    "received": 2747782
+                }
+            ]
+        },
+        {
+            "startTime": "2021-07-22T03:00:00Z",
+            "endTime": "2021-07-22T04:00:00Z",
+            "byInterface": [
+                {
+                    "interface": "wan1",
+                    "sent": 6326222,
+                    "received": 12253346
+                },
+                {
+                    "interface": "wan2",
+                    "sent": 402850,
+                    "received": 2981021
+                }
+            ]
+        }
+    ]
+    ```
+    """
+    return dashboard.appliance.getNetworkApplianceUplinksUsageHistory(
+        network_id,
+        **kwargs
+    )
+
+# @cache_json("cache/getNetworkApplianceTrafficShapingUplinkBandwidth.json")
+def get_network_appliance_traffic_shaping_uplink_bandwidth(
+        dashboard: meraki.DashboardAPI,
+        network_id: str,
+    ):
+    """
+    https://developer.cisco.com/meraki/api-v1/get-network-appliance-traffic-shaping-uplink-bandwidth/
+    ```json
+    {
+        "bandwidthLimits": {
+            "wan1": {
+                "limitUp": 1000000,
+                "limitDown": 1000000
+            },
+            "wan2": {
+                "limitUp": 1000000,
+                "limitDown": 1000000
+            },
+            "cellular": {
+                "limitUp": 51200,
+                "limitDown": 51200
+            }
+        }
+    }
+    ```
+    """
+    return dashboard.appliance.getNetworkApplianceTrafficShapingUplinkBandwidth(
+        network_id
+    )
+
+
+# @cache_json("cache/getNetworkWirelessSsids.json")
+def get_network_wireless_ssids(
+        dashboard: meraki.DashboardAPI,
+        network_id: str,
+    ):
+    """
+    https://developer.cisco.com/meraki/api-v1/get-network-wireless-ssids/
+    ```json
+    [
+        {
+            "number": 0,
+            "name": "My SSID",
+            "enabled": true,
+            "splashPage": "Click-through splash page",
+            "ssidAdminAccessible": false,
+            "localAuth": false,
+            "authMode": "8021x-radius",
+            "encryptionMode": "wpa",
+            "wpaEncryptionMode": "WPA2 only",
+            "radiusServers": [
+                {
+                    "host": "0.0.0.0",
+                    "port": 3000,
+                    "openRoamingCertificateId": 2,
+                    "caCertificate": "-----BEGIN CERTIFICATE-----\nMIIEKjCCAxKgAwIBAgIRANb+lsED3eb4+6YKLFFYqEkwDQYJKoZIhvcNAQELBQAw\ngYcxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMREwDwYDVQQHDAhT\nYW4gSm9zZTEcMBoGA1UECgwTQ2lzY28gU3lzdGVtcywgSW5jLjESMBAGA1UECwwJ\nRE5BU3BhY2VzMR4wHAYDVQQDDBVjaXNjby5vcGVucm9hbWluZy5vcmcwHhcNMjAx\nMTA1MjEzMzM1WhcNMjExMTA1MjIzMzM1WjCBpDEcMBoGCgmSJomT8ixkAQETDGRu\nYXNwYWNlczpVUzELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNBMQ4wDAYDVQQKEwVD\naXNjbzEcMBoGA1UECxMTV0JBOldSSVggRW5kLUVudGl0eTE8MDoGA1UEAxMzNjQ3\nMDcwNDM4NDQ5NjQxMjAwMDAuMTg4MzQuaHMuY2lzY28ub3BlbnJvYW1pbmcub3Jn\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoqjP9QgRGyUO3p7SH9QK\nuTq6UYK7nAyjImgS4yQxeBkyZ5f2EUkX8m/AOcewpPxxPBhjPKRwxGeX3S50ksiA\nayFomUeslR0S0Z7RN9rzJa+CFyi9MwWIHMbLgXpB8tsSpgTAqwrzoTzOGq9fgC6u\npZhdZrBkg3FeJgD88goCi9mZDsY2YAoeGRLFJ2fR8iICqIVQy+Htq9pE22WBLpnS\nKjL3+mR9FArHNFtWlhKF2YHMUqyHHrnZnF/Ns7QNoMMF7/CK18iAKgnb+2wuGKM2\naEMddOeOTtz+i/rgjkp/RGMt011EdCsso0/cTo9qqX/bxOOCE4/Mne/ChMkQPnNU\nCwIDAQABo3IwcDAJBgNVHRMEAjAAMB8GA1UdIwQYMBaAFIG+4l5yiB01gP0sw4ML\nUSopqYcuMB0GA1UdDgQWBBSby1T9leYVOVVdOZXiHCSaDDEMiDAOBgNVHQ8BAf8E\nBAMCBaAwEwYDVR0lBAwwCgYIKwYBBQUHAwIwDQYJKoZIhvcNAQELBQADggEBAEyE\n1mjSUyY6uNp6W4l20w7SskALSJDRKkOeZxAgF3VMxlsCuEl70s9oEfntwIpyQtSa\njON/9yJHbwm/Az824bmk8Dc7AXIPhay+dftXb8j529gPuYB9AKoPNg0NctkyYCQh\na/3YQVdDWX7XgmEiXkL57M7G6+IdcPDONLArfjOcT9qHdkVVq1AIjlMSx3OQQmm/\nuoLb/G9q/97QA2/l8shG/Na8HjVqGLcl5TNZdbNhs2w9ogxr/GNzqdvym6RQ8vT/\nUR2n+uwH4n1MUxmHYYeyot5dnIV1IJ6hQ54JAncM9HvCLFk1WHz6RKshQUCuPBiJ\nwTw70BVktzJnb0VLeDg=\n-----END CERTIFICATE-----"
+                }
+            ],
+            "radiusAccountingServers": [
+                {
+                    "host": "0.0.0.0",
+                    "port": 3000,
+                    "openRoamingCertificateId": 2,
+                    "caCertificate": "-----BEGIN CERTIFICATE-----\nMIIEKjCCAxKgAwIBAgIRANb+lsED3eb4+6YKLFFYqEkwDQYJKoZIhvcNAQELBQAw\ngYcxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMREwDwYDVQQHDAhT\nYW4gSm9zZTEcMBoGA1UECgwTQ2lzY28gU3lzdGVtcywgSW5jLjESMBAGA1UECwwJ\nRE5BU3BhY2VzMR4wHAYDVQQDDBVjaXNjby5vcGVucm9hbWluZy5vcmcwHhcNMjAx\nMTA1MjEzMzM1WhcNMjExMTA1MjIzMzM1WjCBpDEcMBoGCgmSJomT8ixkAQETDGRu\nYXNwYWNlczpVUzELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNBMQ4wDAYDVQQKEwVD\naXNjbzEcMBoGA1UECxMTV0JBOldSSVggRW5kLUVudGl0eTE8MDoGA1UEAxMzNjQ3\nMDcwNDM4NDQ5NjQxMjAwMDAuMTg4MzQuaHMuY2lzY28ub3BlbnJvYW1pbmcub3Jn\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoqjP9QgRGyUO3p7SH9QK\nuTq6UYK7nAyjImgS4yQxeBkyZ5f2EUkX8m/AOcewpPxxPBhjPKRwxGeX3S50ksiA\nayFomUeslR0S0Z7RN9rzJa+CFyi9MwWIHMbLgXpB8tsSpgTAqwrzoTzOGq9fgC6u\npZhdZrBkg3FeJgD88goCi9mZDsY2YAoeGRLFJ2fR8iICqIVQy+Htq9pE22WBLpnS\nKjL3+mR9FArHNFtWlhKF2YHMUqyHHrnZnF/Ns7QNoMMF7/CK18iAKgnb+2wuGKM2\naEMddOeOTtz+i/rgjkp/RGMt011EdCsso0/cTo9qqX/bxOOCE4/Mne/ChMkQPnNU\nCwIDAQABo3IwcDAJBgNVHRMEAjAAMB8GA1UdIwQYMBaAFIG+4l5yiB01gP0sw4ML\nUSopqYcuMB0GA1UdDgQWBBSby1T9leYVOVVdOZXiHCSaDDEMiDAOBgNVHQ8BAf8E\nBAMCBaAwEwYDVR0lBAwwCgYIKwYBBQUHAwIwDQYJKoZIhvcNAQELBQADggEBAEyE\n1mjSUyY6uNp6W4l20w7SskALSJDRKkOeZxAgF3VMxlsCuEl70s9oEfntwIpyQtSa\njON/9yJHbwm/Az824bmk8Dc7AXIPhay+dftXb8j529gPuYB9AKoPNg0NctkyYCQh\na/3YQVdDWX7XgmEiXkL57M7G6+IdcPDONLArfjOcT9qHdkVVq1AIjlMSx3OQQmm/\nuoLb/G9q/97QA2/l8shG/Na8HjVqGLcl5TNZdbNhs2w9ogxr/GNzqdvym6RQ8vT/\nUR2n+uwH4n1MUxmHYYeyot5dnIV1IJ6hQ54JAncM9HvCLFk1WHz6RKshQUCuPBiJ\nwTw70BVktzJnb0VLeDg=\n-----END CERTIFICATE-----"
+                }
+            ],
+            "radiusAccountingEnabled": false,
+            "radiusEnabled": true,
+            "radiusAttributeForGroupPolicies": "Filter-Id",
+            "radiusFailoverPolicy": "Deny access",
+            "radiusLoadBalancingPolicy": "Round robin",
+            "ipAssignmentMode": "NAT mode",
+            "adminSplashUrl": "http://example.com",
+            "splashTimeout": "30 minutes",
+            "walledGardenEnabled": true,
+            "walledGardenRanges": [
+                "example.com",
+                "1.1.1.1/32"
+            ],
+            "minBitrate": 11,
+            "bandSelection": "5 GHz band only",
+            "perClientBandwidthLimitUp": 0,
+            "perClientBandwidthLimitDown": 0,
+            "visible": true,
+            "availableOnAllAps": false,
+            "availabilityTags": [ "tag1", "tag2" ],
+            "perSsidBandwidthLimitUp": 0,
+            "perSsidBandwidthLimitDown": 0,
+            "mandatoryDhcpEnabled": false
+        }
+    ]
+    ```
+    """
+    return dashboard.wireless.getNetworkWirelessSsids(network_id)
+
+
+# @cache_json("cache/getNetworkWirelessSsidSplashSettings.json")
+def get_network_wireless_ssid_splash_settings(
+        dashboard: meraki.DashboardAPI,
+        network_id: str,
+        ssid_number: int
+    ):
+    """
+    https://developer.cisco.com/meraki/api-v1/get-network-wireless-ssid-splash-settings/
+    ```json
+    {
+        "ssidNumber": 0,
+        "splashPage": "Click-through splash page",
+        "useSplashUrl": true,
+        "splashUrl": "https://www.custom_splash_url.com",
+        "splashTimeout": 1440,
+        "redirectUrl": "https://example.com",
+        "useRedirectUrl": true,
+        "welcomeMessage": "Welcome!",
+        "themeId": "c3ddcb4f16785ee747ab5ffc10867d6c8ea704be",
+        "splashLogo": {
+            "md5": "abcd1234",
+            "extension": "jpg"
+        },
+        "splashImage": {
+            "md5": "542cccac8d7dedee0f185311d154d194",
+            "extension": "jpg"
+        },
+        "splashPrepaidFront": {
+            "md5": "542cccac8d7dedee0f185311d154d194",
+            "extension": "jpg"
+        },
+        "guestSponsorship": {
+            "durationInMinutes": 30,
+            "guestCanRequestTimeframe": false
+        },
+        "blockAllTrafficBeforeSignOn": false,
+        "controllerDisconnectionBehavior": "default",
+        "allowSimultaneousLogins": false,
+        "billing": {
+            "freeAccess": {
+                "enabled": true,
+                "durationInMinutes": 120
+            },
+            "prepaidAccessFastLoginEnabled": true,
+            "replyToEmailAddress": "user@email.com"
+        },
+        "sentryEnrollment": {
+            "systemsManagerNetwork": { "id": "N_1234" },
+            "strength": "focused",
+            "enforcedSystems": [ "iOS" ]
+        },
+        "selfRegistration": {
+            "enabled": true,
+            "authorizationType": "admin"
+        }
+    }
+    ```
+    """
+    return dashboard.wireless.getNetworkWirelessSsidSplashSettings(
+        network_id,
+        ssid_number
+    )
+
+
+def get_network_appliance_content_filtering(
+        dashboard: meraki.DashboardAPI,
+        network_id: str,
+    ):
+    """
+    https://developer.cisco.com/meraki/api-v1/get-network-appliance-content-filtering/
+    ```json
+    {
+        "allowedUrlPatterns": [
+            "http://www.example.org",
+            "http://help.com.au"
+        ],
+        "blockedUrlPatterns": [
+            "http://www.example.com",
+            "http://www.betting.com"
+        ],
+        "blockedUrlCategories": [
+            {
+                "id": "meraki:contentFiltering/category/1",
+                "name": "Real Estate"
+            },
+            {
+                "id": "meraki:contentFiltering/category/7",
+                "name": "Shopping"
+            }
+        ],
+        "urlCategoryListSize": "topSites"
+    }
+    ```
+    """
+    return dashboard.appliance.getNetworkApplianceContentFiltering(
+        network_id
+    )
+
+
+# @cache_json("cache/getOrganizationApplianceSecurityEvents.json")
+def get_organization_appliance_security_events(
+        dashboard: meraki.DashboardAPI,
+        org_id: str,
+        **kwargs
+    ):
+    """
+    https://developer.cisco.com/meraki/api-v1/get-organization-appliance-security-events/
+    ```json
+    [
+        {
+            "ts": "2018-02-11T00:00:00.090210Z",
+            "eventType": "File Scanned",
+            "clientName": "COMPUTER-M-V78J",
+            "clientMac": "10:dd:b1:eb:88:f8",
+            "clientIp": "192.168.128.2",
+            "srcIp": "192.168.128.2",
+            "destIp": "119.192.233.48",
+            "protocol": "http",
+            "uri": "http://www.favorite-icons.com/program/FavoriteIconsUninstall.exe",
+            "canonicalName": "PUA.Win.Dropper.Kraddare::1201",
+            "destinationPort": 80,
+            "fileHash": "3ec1b9a95fe62aa25fc959643a0f227b76d253094681934daaf628d3574b3463",
+            "fileType": "MS_EXE",
+            "fileSizeBytes": 193688,
+            "disposition": "Malicious",
+            "action": "Blocked"
+        },
+        {
+            "ts": "2018-02-11T00:00:00.090210Z",
+            "eventType": "IDS Alert",
+            "deviceMac": "00:18:0a:01:02:03",
+            "clientMac": "A1:B2:C3:D4:E5:F6",
+            "srcIp": "1.2.3.4:34195",
+            "destIp": "10.20.30.40:80",
+            "protocol": "tcp/ip",
+            "priority": "2",
+            "classification": "4",
+            "blocked": true,
+            "message": "SERVER-WEBAPP JBoss JMX console access attempt",
+            "signature": "1:21516:9",
+            "sigSource": "",
+            "ruleId": "meraki:intrusion/snort/GID/1/SID/26267"
+        }
+    ]
+    ```
+    """
+    return dashboard.appliance.getOrganizationApplianceSecurityEvents(
+        org_id,
+        total_pages='all',
+        **kwargs
+    )
+
+
+@cache_json("cache/getNetworkEvents.json")
+def get_network_events(
+        dashboard: meraki.DashboardAPI,
+        network_id: str,
+        **kwargs
+    ):
+    """
+    https://developer.cisco.com/meraki/api-v1/get-network-events/
+    ```json
+    {
+        "message": "Some error",
+        "pageStartAt": "2018-02-11T00:00:00.090210Z",
+        "pageEndAt": "2018-02-11T00:00:00.090210Z",
+        "events": [
+            {
+                "occurredAt": "2018-02-11T00:00:00.090210Z",
+                "networkId": "N_24329156",
+                "type": "association",
+                "description": "802.11 association",
+                "category": "80211",
+                "clientId": "k74272e",
+                "clientDescription": "Miles's phone",
+                "clientMac": "22:33:44:55:66:77",
+                "deviceSerial": "Q234-ABCD-5678",
+                "deviceName": "My AP",
+                "ssidNumber": 1,
+                "eventData": {
+                    "radio": "1",
+                    "vap": "1",
+                    "client_mac": "22:33:44:55:66:77",
+                    "client_ip": "1.2.3.4",
+                    "channel": "36",
+                    "rssi": "12",
+                    "aid": "2104009183"
+                }
+            }
+        ]
+    }
+    ```
+    """
+    return dashboard.networks.getNetworkEvents(
+        network_id,
+        total_pages=3,
+        perPage=1000,
+        **kwargs
+    )
+
+@cache_json("cache/getNetworkEventsEventTypes.json")
+@cache_csv("cache/getNetworkEventsEventTypes.csv")
+def get_network_events_event_types(
+        dashboard: meraki.DashboardAPI,
+        network_id: str,
+        **kwargs
+    ):
+    """
+    https://developer.cisco.com/meraki/api-v1/get-network-events-event-types/
+    ```json
+    [
+        {
+            "category": "802.11",
+            "type": "association",
+            "description": "802.11 association"
+        }
+    ]
+    ```
+    """
+    return dashboard.networks.getNetworkEventsEventTypes(
+        network_id,
+        **kwargs
     )
