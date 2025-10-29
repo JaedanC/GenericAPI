@@ -237,8 +237,8 @@ def get_network_webhooks_http_servers(
     return dashboard.networks.getNetworkWebhooksHttpServers(network_id)
 
 
-# @cache_json("cache/getOrganizationApplianceUplinkStatuses.json")
-# @cache_csv("cache/getOrganizationApplianceUplinkStatuses.csv")
+@cache_json("cache/getOrganizationApplianceUplinkStatuses.json")
+@cache_csv("cache/getOrganizationApplianceUplinkStatuses.csv")
 def get_organization_appliance_uplink_statuses(
     dashboard: meraki.DashboardAPI, organization_id: int):
     """https://developer.cisco.com/meraki/api-v1/get-organization-uplinks-statuses/
@@ -1090,7 +1090,8 @@ def get_network_switch_stack_routing_interfaces(
     )
 
 
-# @cache_json("cache/getOrganizationSwitchPortsBySwitch.json")
+@cache_json("cache/getOrganizationSwitchPortsBySwitch.json")
+@cache_csv("cache/getOrganizationSwitchPortsBySwitch.csv", blocking=True)
 def get_organization_switch_ports_by_switch(
         dashboard: meraki.DashboardAPI,
         organization_id: str,
@@ -1601,4 +1602,61 @@ def get_network_events_event_types(
     return dashboard.networks.getNetworkEventsEventTypes(
         network_id,
         **kwargs
+    )
+
+
+@cache_csv("cache/all_getOrganizationWirelessSsidsStatusesByDevice.csv")
+@cache_json("cache/all_getOrganizationWirelessSsidsStatusesByDevice.json")
+def all_get_organization_wireless_ssids_statuses_by_device(
+        dashboard: meraki.DashboardAPI,
+        org_id: str,
+        **kwargs
+    ):
+    """
+    `https://developer.cisco.com/meraki/api-v1/get-organization-wireless-ssids-statuses-by-device/`
+    ```json
+    {
+        "items": [
+            {
+                "serial": "QQ3A-QHWY-DQ2Z",
+                "name": "My AP",
+                "network": {
+                    "id": "N_24329156",
+                    "name": "Main Office"
+                },
+                "basicServiceSets": [
+                    {
+                        "bssid": "8A:15:04:00:00:00",
+                        "ssid": {
+                            "name": "My SSID",
+                            "number": 0,
+                            "enabled": true,
+                            "advertised": true
+                        },
+                        "radio": {
+                            "band": "2.4",
+                            "channel": 11,
+                            "channelWidth": 20,
+                            "power": 18,
+                            "isBroadcasting": true,
+                            "index": "0"
+                        }
+                    }
+                ]
+            }
+        ],
+        "meta": {
+            "counts": {
+                "items": {
+                    "total": 1738,
+                    "remaining": 1238
+                }
+            }
+        }
+    }
+    ```
+    """
+    return dashboard.wireless.getOrganizationWirelessSsidsStatusesByDevice(
+        org_id,
+        total_pages='all'
     )

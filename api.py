@@ -506,7 +506,7 @@ def flatten_json(d: dict, delim: str) -> dict:
     return val
 
 
-def dict_to_csv(json_dict: List[dict], delim=".") -> str:
+def dict_to_csv(list_dict_json: List[dict], delim=".") -> str:
     """Flattens and converts a dictionary to a csv using the delimeter to show
     nested content.
 
@@ -519,7 +519,7 @@ def dict_to_csv(json_dict: List[dict], delim=".") -> str:
         str: The csv as a string
     """
     fields = {}
-    for record in json_dict:
+    for record in list_dict_json:
         record = flatten_json(record, delim)
         for key in record.keys():
             fields[key] = None
@@ -528,7 +528,7 @@ def dict_to_csv(json_dict: List[dict], delim=".") -> str:
     writer = csv.DictWriter(f, fieldnames=fields.keys())
     writer.writeheader()
 
-    for record in json_dict:
+    for record in list_dict_json:
         record = flatten_json(record, delim)
         writer.writerow(record)
 
@@ -619,19 +619,25 @@ def arrayify_dict(d: dict, query: List[str], key_to_add: str):
 def safe_open_w(path: str, **kwargs):
     """Open "path" for writing, creating any parent directories as needed.
     """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    dir_component = os.path.dirname(path)
+    if dir_component != "":
+        os.makedirs(dir_component, exist_ok=True)
     return open(path, "w", **kwargs)
 
 
 def safe_open_wb(path: str, **kwargs):
     """Open "path" for writing, creating any parent directories as needed.
     """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    dir_component = os.path.dirname(path)
+    if dir_component != "":
+        os.makedirs(dir_component, exist_ok=True)
     return open(path, "wb", **kwargs)
 
 
 def safe_open_w_blocking(path: str, **kwargs):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    dir_component = os.path.dirname(path)
+    if dir_component != "":
+        os.makedirs(dir_component, exist_ok=True)
 
     try:
         while True:
