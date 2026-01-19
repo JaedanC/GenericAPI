@@ -1,8 +1,10 @@
 from __future__ import annotations
 import json
-from netbox_python.baseapi import APIResource
-from netbox_python.exceptions import NetBoxException
-from typing import List, Dict
+# from netbox_python.baseapi import APIResource
+# from netbox_python.exceptions import NetBoxException
+from pynetbox.core.endpoint import Endpoint
+from pynetbox.core.response import Record
+from typing import List, Dict, Optional
 import sqlite3
 import datetime
 
@@ -11,7 +13,7 @@ class NetBoxLog:
     """This class will handle hands-off operation by logging any information
     into a sqllite database.
     """
-    def __init__(self, sqllite_connection: sqlite3.Connection):
+    def __init__(self, sqllite_connection: sqlite3.Connection): 
         self.con: sqlite3.Connection = sqllite_connection
         cur = self.con.cursor()
         cur.execute("""
@@ -66,60 +68,60 @@ class NetBoxLog:
         )
         self.con.commit()
 
-    def post(self, endpoint: APIResource, data_inserted: dict):
+    def post(self, endpoint: Endpoint, data_inserted: dict):
         cur = self.con.cursor()
         cur.execute("""
             INSERT INTO post VALUES (?, ?, ?)""",
-            (datetime.datetime.now(), endpoint.path, json.dumps(data_inserted))
+            (datetime.datetime.now(), endpoint.name, json.dumps(data_inserted))
         )
         self.con.commit()
 
-    def patch(self, endpoint: APIResource, id_: str, data_patched: dict):
+    def patch(self, endpoint: Endpoint, id_: str, data_patched: dict):
         cur = self.con.cursor()
         cur.execute("""
             INSERT INTO patch VALUES (?, ?, ?, ?)""",
-            (datetime.datetime.now(), endpoint.path, str(id_), json.dumps(data_patched))
+            (datetime.datetime.now(), endpoint.name, str(id_), json.dumps(data_patched))
         )
         self.con.commit()
 
-    def delete(self, endpoint: APIResource, data_deleted: dict):
+    def delete(self, endpoint: Endpoint, data_deleted: dict):
         cur = self.con.cursor()
         cur.execute("""
             INSERT INTO deletes VALUES (?, ?, ?)""",
-            (datetime.datetime.now(), endpoint.path, json.dumps(data_deleted))
+            (datetime.datetime.now(), endpoint.name, json.dumps(data_deleted))
         )
         self.con.commit()
 
-    def error(self, endpoint: APIResource, error_message: str, io=True):
+    def error(self, endpoint: Endpoint, error_message: str, io=True):
         if io:
             print(error_message)
 
         cur = self.con.cursor()
         cur.execute("""
             INSERT INTO errors VALUES (?, ?, ?)""",
-            (datetime.datetime.now(), endpoint.path if endpoint is not None else "", error_message)
+            (datetime.datetime.now(), endpoint.name if endpoint is not None else "", error_message)
         )
         self.con.commit()
 
 
 class NetBoxDeleteOrganiser:
     def __init__(self, logger: NetBoxLog):
-        self.deletes: Dict[APIResource, List[int]] = {}
+        self.deletes: Dict[Endpoint, List[int]] = {}
         self.order_to_delete = None
         self.logger = logger
 
     def add_delete(
             self,
-            endpoint: APIResource,
+            endpoint: Endpoint,
             keys_to_delete: List[int]
         ):
-        assert isinstance(endpoint, APIResource)
+        assert isinstance(endpoint, Endpoint)
         if endpoint in self.deletes:
             self.deletes[endpoint] += keys_to_delete
         else:
             self.deletes[endpoint] = keys_to_delete
 
-    def delete_in_order(self, *endpoints: List[APIResource], skip_prompt=False):
+    def delete_in_order(self, *endpoints: List[Endpoint], skip_prompt=False):
         assert len(set(endpoints)) == len(self.deletes)
         for endpoint in endpoints:
             assert endpoint in self.deletes
@@ -135,7 +137,7 @@ class NetBoxDeleteOrganiser:
                         input("Press enter to delete the object or CTRL+C to cancel.")
                     endpoint.delete(deleting_key)
                     self.logger.delete(endpoint, are_you_sure_deleting)
-                except NetBoxException as e:
+                except ValueError as e:
                     self.logger.error(endpoint, str(e))
                     raise e
                 except KeyboardInterrupt:
@@ -147,13 +149,15 @@ class NetBoxChange:
         self.patch_keys = []
         self.logger = logger
 
-    def insert(self, endpoint: APIResource, data: dict, patch_key: int | None, get=False):
+    def insert(self, endpoint: Endpoint, data: dict, patch_key: int | None, get=False) \
+        -> Optional[Record | List[Record]]:
         # POST
         if patch_key is None:
             print("Creating new")
             print(json.dumps(data, indent=4))
             self.logger.post(endpoint, data)
-            results = endpoint.create(**data).data
+            results = endpoint.create(**data)
+            # results = endpoint.create(**data).data
 
             print("Response")
             print(json.dumps(results, indent=4))
@@ -164,14 +168,16 @@ class NetBoxChange:
         # Return existing
         if len(data) == 0:
             if get:
-                return endpoint.get(patch_key).data
+                return endpoint.get(patch_key)
+                # return endpoint.get(patch_key).data
             return
 
         # PATCH
         print("Patching {}".format(endpoint))
         print("Modifying {}".format(patch_key))
         print(json.dumps(data, indent=4))
-        results = endpoint.update(patch_key, **data).data
+        results = endpoint.update(patch_key, **data)
+        # results = endpoint.update(patch_key, **data).data
         self.logger.patch(endpoint, patch_key, data)
 
         print("Response")
@@ -199,7 +205,7 @@ class NetBoxChange:
 
     def delete_not_inserted_from(
             self,
-            endpoint: APIResource,
+            endpoint: Endpoint,
             keys_that_could_be_deleted: List[int],
             unsafe_skip=False
         ):
@@ -219,7 +225,7 @@ class NetBoxChange:
 
     def delete_keys(
             self,
-            endpoint: APIResource,
+            endpoint: Endpoint,
             keys_to_delete: List[int],
             unsafe_skip=False
         ):
@@ -232,7 +238,7 @@ class NetBoxChange:
                     input("Press enter to delete the object or CTRL+C to cancel.")
                 endpoint.delete(deleting_key)
                 self.logger.delete(endpoint, are_you_sure_deleting)
-            except NetBoxException as e:
+            except ValueError as e:
                 self.logger.error(endpoint, f"Error. Tried to delete {are_you_sure_deleting}\n{e}")
                 raise e
             except KeyboardInterrupt:
@@ -241,7 +247,7 @@ class NetBoxChange:
 
     def delete_key_if_not_inserted(
             self,
-            endpoint: APIResource,
+            endpoint: Endpoint,
             key_that_could_be_deleted: int,
             unsafe_skip=False,
         ):
