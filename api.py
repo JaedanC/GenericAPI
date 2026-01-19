@@ -406,7 +406,10 @@ class ListDictFilter:
             elif isinstance(entry, dict):
                 self.data.append(RelaxedDictionary(entry))
             else:
-                assert False, "Must be a list of dict or RelaxedDictionary"
+                try:
+                    self.data.append(RelaxedDictionary(dict(entry)))
+                except ValueError:
+                    assert False, "Must be a list of dict(able) or RelaxedDictionary"
         self.n_next_filters_or = 0
         self.n_next_filters_keep_rows: Set[RelaxedDictionary] = set()
 
