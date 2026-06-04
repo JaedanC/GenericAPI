@@ -1,85 +1,64 @@
 from __future__ import annotations
 from enum import Enum
 from io import StringIO
-from typing import Callable, Any, List, Set, Tuple, Dict, Optional
 import base64
+import copy
 import csv
 import io
 import ipaddress
 import json
 import os
-import time
 import traceback
-
-
 import requests
+from typing import Callable, Any, List, Set
 
 
 class APIResponse:
     def __init__(self, req: APIRequest, requests_resp: requests.Response):
-        self._req: APIRequest = req
-        self._requests_resp: requests.Response = requests_resp
-
+        self.__req: APIRequest = req
+        self.__requests_resp: requests.Response = requests_resp
+    
     def text(self):
-        return self._requests_resp.text
-
+        return self.__requests_resp.text
+    
     def json_pretty(self, indent=4):
         try:
-            json_obj = json.loads(self._requests_resp.text)
+            json_obj = json.loads(self.__requests_resp.text)
             return json.dumps(json_obj, indent=indent)
         except json.decoder.JSONDecodeError:
-            return self._requests_resp.text
-
+            return self.__requests_resp.text
+    
     def json_dict(self):
         try:
-            return json.loads(self._requests_resp.text)
+            return json.loads(self.__requests_resp.text)
         except json.decoder.JSONDecodeError as e:
             print(e)
-            print(self._requests_resp.text)
+            print(self.__requests_resp.text)
             raise e
-
+    
     def status_code(self):
-        return self._requests_resp.status_code
-
+        return self.__requests_resp.status_code
+    
     def request(self):
-        return self._req
-
+        return self.__req
+    
     def raw(self):
-        return self._requests_resp
+        return self.__requests_resp
 
 
 class ODataResponse:
     def __init__(self, req: APIRequest, values):
-        self._req: APIRequest = req
-        self._values = values
-
+        self.__req: APIRequest = req
+        self.__values = values
+    
     def json_dict(self):
-        return self._values
-
+        return self.__values
+    
     def json_pretty(self, indent=4):
-        return json.dumps(self._values, indent=indent)
+        return json.dumps(self.__values, indent=indent)
 
     def request(self):
-        return self._req
-
-
-class APIResponseMultiple:
-    def __init__(self, all_requests: List[APIRequest], all_responses: List[APIResponse], results: List[dict]):
-        self._all_req: APIRequest = all_requests
-        self._all_res: APIResponse = all_responses
-        self._results: List[dict] = results
-
-    def json_dict(self):
-        return self._results
-
-    def json_pretty(self, indent=4):
-        return json.dumps(self._results, indent=indent)
-
-    def requests(self):
-        return self._all_req
-
-    def responses(self):
-        return self._all_res
+        return self.__req
 
 
 class ContentType(Enum):
@@ -97,105 +76,104 @@ class Method(Enum):
 
 class APIRequest:
     def __init__(self, url: str):
-        self.set_url(url)
-        self._parameters: dict | None = None
-        self._content_type: ContentType | None = None
-        self._headers = {}
-        self._method: Method | None = None
-        self._query_parameters: dict | None = None
-
+        self.__base_url: str = url
+        self.__url: str = url
+        self.__parameters: dict | None = None
+        self.__content_type: ContentType | None = None
+        self.__headers = {}
+        self.__method: Method | None = None
+        self.__query_parameters: dict | None = None
+    
     def __repr__(self):
         method_text = "(No method set)"
-        if self._method == Method.Get:
+        if self.__method == Method.Get:
             method_text = "GET"
-        elif self._method == Method.Post:
+        elif self.__method == Method.Post:
             method_text = "POST"
-        elif self._method == Method.Delete:
+        elif self.__method == Method.Delete:
             method_text = "DELETE"
-        elif self._method == Method.Put:
+        elif self.__method == Method.Put:
             method_text = "PUT"
-        elif self._method == Method.Patch:
+        elif self.__method == Method.Patch:
             method_text = "PATCH"
-
+        
         content_type_text = "(No content-type set)"
-        if self._content_type == ContentType.ApplicationJson:
+        if self.__content_type == ContentType.ApplicationJson:
             content_type_text = "application/json"
-        elif self._content_type == ContentType.UrlEncoded:
+        elif self.__content_type == ContentType.UrlEncoded:
             content_type_text = "application/x-www-form-urlencoded"
-
-        headers = self._headers.copy()
-        if self._content_type is not None:
+        
+        headers = self.__headers.copy()
+        if self.__content_type is not None:
             headers["Content-Type"] = content_type_text
-
+        
         headers_text = json.dumps(headers, indent=4)
 
 
-        url = self._url
-        if self._query_parameters is not None:
-            url += "?" + dict_to_url_query(self._query_parameters)
+        url = self.__url
+        if self.__query_parameters is not None:
+            url += "?" + dict_to_url_query(self.__query_parameters)
 
-        if self._method == Method.Get:
+        if self.__method == Method.Get:
             return f"{method_text} {url}\n" + \
             "Headers:\n" + \
             headers_text
-        if (self._method == Method.Post or self._method == Method.Delete) and self._parameters is None:
+        if (self.__method == Method.Post or self.__method == Method.Delete) and self.__parameters is None:
             return f"{method_text} {url}\n" + \
             "Headers:\n" + \
             headers_text
-        elif self._method == Method.Post or self._method == Method.Delete:
+        elif self.__method == Method.Post or self.__method == Method.Delete:
             return f"{method_text} {url}\n" + \
             "Headers:\n" + \
             headers_text + "\n" + \
             "Body:\n" + \
-            json.dumps(self._parameters, indent=4)
-
-    def set_url(self, url: str):
-        self._base_url = url
-        self._url = url
-
+            json.dumps(self.__parameters, indent=4)
+        
     def set_method(self, method: Method):
-        if self._method is not None:
+        if self.__method is not None:
             raise ValueError("Cannot set the method twice")
-        self._method = method
+        self.__method = method
         return self
-
+    
     def set_content_type(self, content_type: ContentType):
-        if self._method == Method.Get and content_type != ContentType.UrlEncoded:
-            raise ValueError("Cannot set the content-type for get requests unless it's UrlEncoded")
-        if  self._method == Method.Delete:
+        if self.__method == Method.Get:
+            raise ValueError("Cannot set the content-type for get requests")
+        if  self.__method == Method.Delete:
             raise ValueError("Cannot set the content-type for delete requests")
-        self._content_type = content_type
+        self.__content_type = content_type
         return self
-
+    
     def add_parameter(self, key: str, value):
-        if key in self._headers:
+        if key in self.__headers:
             raise ValueError("Cannot set a parameter twice")
-        if self._parameters is None:
-            self._parameters = {}
-        self._parameters[key] = value
+        if self.__parameters is None:
+            self.__parameters = {}
+        self.__parameters[key] = value
         return self
-
+    
     def add_parameters(self, params: dict):
         for k, v in params.items():
             self.add_parameter(k, v)
         return self
-
+    
     def add_query(self, key, value):
-        if self._method == Method.Get:
-            raise ValueError("Prefer using a parameter with UrlEncoded body for get requests")
+        if self.__query_parameters is None:
+            self.__query_parameters = {}
+        self.__query_parameters[key] = value
+        return self
 
-        if self._query_parameters is None:
-            self._query_parameters = {}
-        self._query_parameters[key] = value
+    def add_queries(self, queries: dict):
+        for k, v in queries.items():
+            self.add_query(k, v)
         return self
 
     def add_header(self, header: str, value: str):
-        self._headers[header] = value
+        self.__headers[header] = value
         return self
 
     def set_bearer_authorization(self, token: str):
         return self.add_header("Authorization", "Bearer " + token)
-
+    
     def set_basic_authorization(self, user, password):
         combined = f"{user}:{password}"
         # From https://stackabuse.com/encoding-and-decoding-base64-strings-in-python/
@@ -203,138 +181,107 @@ class APIRequest:
         base64_bytes = base64.b64encode(message_bytes)
         base64_message = base64_bytes.decode("ascii")
         return self.add_header("Authorization", "Basic " + base64_message)
-
+    
     def execute(self, **kwargs):
-        url, queries = split_url_and_query(self._url)
-        
-        if self._content_type == ContentType.UrlEncoded:
-            self.add_parameters(queries or {})
-            self.add_parameters(self._query_parameters or {})
-            self._query_parameters = None
-            queries = None
-        else:
-            for k, v in queries.items():
-                self.add_query(k, v)
-        
-        body = None
-        if self._method in [Method.Get, Method.Delete] or self._content_type == ContentType.UrlEncoded:
-            body = self._parameters or {}
-        else:
-            body = json.dumps(self._parameters or {})
-        
-        if self._method is None:
+        if self.__method == None:
             raise ValueError("A method must be set")
 
-        if self._content_type is None and self._parameters is not None:
+        if self.__content_type is None and self.__parameters is not None:
             raise ValueError("A content Type must be set when using parameters")
-
-        if self._method in [Method.Get, Method.Delete] and self._parameters is not None and self._content_type != ContentType.UrlEncoded:
-            raise ValueError("Content Type must be UrlEncoded for Get and Delete requests with parameters")
-
-        if self._method in [Method.Get, Method.Delete] and self._query_parameters is not None:
-            raise ValueError("Prefer using a parameter with UrlEncoded body for get requests")
         
-        if self._query_parameters is not None and self._parameters is not None and self._method not in [Method.Patch, Method.Post, Method.Put]:
-            raise ValueError("Can't use url queries and parameter for non-body request methods.")
+        if self.__content_type is not None and self.__parameters is None:
+            raise ValueError("Parameter must be added when setting a content type")
+
+        if self.__parameters is not None and self.__method == Method.Get:
+            raise ValueError("Cannot have parameters with a get request")
+        
+        if self.__parameters is not None and self.__method == Method.Delete:
+            raise ValueError("Cannot have parameters with a delete request")
+        
+        if self.__content_type is not None and self.__method == Method.Get:
+            raise ValueError("Cannot set the content type for a get request")
+        
+        if self.__content_type is not None and self.__method == Method.Delete:
+            raise ValueError("Cannot set the content type for a delete request")
+
+        body = None
+        if self.__parameters is not None:
+            if self.__content_type == ContentType.ApplicationJson:
+                body = json.dumps(self.__parameters)
+            elif self.__content_type == ContentType.UrlEncoded:
+                body = dict_to_url_query(self.__parameters)
+            else:
+                raise ValueError("The Content type does not match a known value")
+        
+        if self.__method == Method.Get:
+            body = self.__query_parameters
+        
+        # Add any queries to the URL
+        if self.__content_type == ContentType.UrlEncoded and self.__query_parameters is not None:
+            raise ValueError("Can't have UrlEncoded and Query parameters at the same time")
+        # elif self.__query_parameters is not None:
+            # self.__url += "?" + dict_to_url_query(self.__query_parameters)
+
+        print(self.__query_parameters)
+        print(self.__url)
 
         # Overwrite any existing is fine
-        if self._content_type == ContentType.ApplicationJson:
-            self._headers["Content-Type"] = "application/json"
-        elif self._content_type == ContentType.UrlEncoded:
-            self._headers["Content-Type"] = "application/x-www-form-urlencoded"
-
-        if self._method == Method.Get:
-            return APIResponse(self, requests.get(url,    headers=self._headers, data=body, **kwargs))
-        elif self._method == Method.Post:
-            return APIResponse(self, requests.post(url,   headers=self._headers, data=body, **kwargs))
-        elif self._method == Method.Delete:
-            return APIResponse(self, requests.delete(url, headers=self._headers, data=body, **kwargs))
-        elif self._method == Method.Put:
-            return APIResponse(self, requests.put(url,    headers=self._headers, data=body, **kwargs))
-        elif self._method == Method.Patch:
-            return APIResponse(self, requests.patch(url,  headers=self._headers, data=body, **kwargs))
-
+        if self.__content_type == ContentType.ApplicationJson:
+            self.__headers["Content-Type"] = "application/json"
+        elif self.__content_type == ContentType.UrlEncoded:
+            self.__headers["Content-Type"] = "application/x-www-form-urlencoded"
+        
+        if self.__method == Method.Get:
+            return APIResponse(self, requests.get(self.__url, headers=self.__headers, data=body, **kwargs))
+        elif self.__method == Method.Post:
+            if body is not None:
+                return APIResponse(self, requests.post(self.__url, headers=self.__headers, data=body, **kwargs))
+            else:
+                return APIResponse(self, requests.post(self.__url, headers=self.__headers, **kwargs))
+        elif self.__method == Method.Delete:
+            return APIResponse(self, requests.delete(self.__url, headers=self.__headers, **kwargs))
+        elif self.__method == Method.Put:
+            if body is not None:
+                return APIResponse(self, requests.put(self.__url, headers=self.__headers, data=body, **kwargs))
+            else:
+                return APIResponse(self, requests.put(self.__url, headers=self.__headers, **kwargs))
+        elif self.__method == Method.Patch:
+            if body is not None:
+                return APIResponse(self, requests.patch(self.__url, headers=self.__headers, data=body, **kwargs))
+            else:
+                return APIResponse(self, requests.patch(self.__url, headers=self.__headers, **kwargs))
 
     def execute_odata(self, odata_next_link_key: str | List[str], odata_value_key, url_prefix=""):
         if isinstance(odata_next_link_key, str):
             odata_next_link_key = [odata_next_link_key]
-
+        
         results = []
         try:
             while True:
                 res: APIResponse = self.execute()
                 results += res.json_dict()[odata_value_key]
-
+ 
                 next_link = RelaxedDictionary(res.json_dict()) \
                     .get(*odata_next_link_key)
                 if next_link is None:
                     break
-
-                self._url = self._base_url
+                   
+                self.__url = self.__base_url
                 # If the next_link has query parameters, then we need to make
                 # the query parameters are .updated
                 if "?" in next_link:
                     _, query = next_link.split("?")
                     next_link_queries = {k: v for k, v in [q.split("=") for q in query.split("&")]}
-                    if self._query_parameters is None:
-                        self._query_parameters = {}
-                    self._query_parameters.update(next_link_queries)
-                    self._url = self._base_url + url_prefix
+                    if self.__query_parameters is None:
+                        self.__query_parameters = {}
+                    self.__query_parameters.update(next_link_queries)
+                    self.__url = self.__base_url + url_prefix
                 else:
-                    self._url = self._base_url + url_prefix + next_link
+                    self.__url = self.__base_url + url_prefix + next_link
         except KeyboardInterrupt:
             print()
             print("Interrupting")
         return ODataResponse(self, results)
-
-    def execute_multiple(self, value_key: str, next_query_func: Callable[[APIRequest, APIResponse], Optional[APIRequest]]):
-        req = self
-        all_req = []
-        all_res = []
-        results = []
-        try:
-            while True:
-                all_req.append(req)
-                res: APIResponse = req.execute()
-                all_res.append(res)
-
-                res_json = res.json_dict()
-                if value_key not in res_json:
-                    break
-
-                results += res_json[value_key]
-
-                req = next_query_func(req, res)
-                if req is None:
-                    break
-        except KeyboardInterrupt:
-            print()
-            print("Interrupting")
-
-        return APIResponseMultiple(all_req, all_res, results)
-
-    def serialise(self):
-        return {
-            "_base_url":         self._base_url,
-            "_url":              self._url,
-            "_parameters":       self._parameters,
-            "_content_type":     self._content_type,
-            "_headers":          self._headers,
-            "_method":           self._method,
-            "_query_parameters": self._query_parameters,
-        }
-
-    @staticmethod
-    def from_json(query_json: dict) -> APIRequest:
-        req = APIRequest(None)
-        req._base_url = query_json["_base_url"]
-        req._url = query_json["_url"]
-        req._parameters = query_json["_parameters"]
-        req._content_type = query_json["_content_type"]
-        req._headers = query_json["_headers"]
-        req._method = query_json["_method"]
-        req._query_parameters = query_json["_query_parameters"]
-        return req
 
 
 class RelaxedDictionary:
@@ -343,41 +290,41 @@ class RelaxedDictionary:
     def __init__(self, dictionary: dict):
         assert isinstance(dictionary, dict)
         self.base = dictionary
-
+    
     def get(self, *keys, map_function: Callable=None, default=None):
         if self.base is None:
             return default
-
+        
         cursor = self.base
         for key in keys:
             if key not in cursor:
                 return default
-
+            
             cursor = cursor[key]
             if not isinstance(cursor, dict):
                 break
-
+        
         return cursor if map_function is None else map_function(cursor)
-
+    
     def set(self, keys: List[str], set_key, value) -> RelaxedDictionary:
         if self.base is None:
             assert False, "Must have a base"
-
+        
         cursor = self.base
         for key in keys:
             if key not in cursor:
                 cursor[key] = {}
-
+            
             cursor = cursor[key]
             if not isinstance(cursor, dict):
                 break
-
+        
         cursor[set_key] = value
         return self
 
     def get_base(self) -> dict:
         return self.base
-
+    
     def is_empty(self):
         return len(self.base) == 0
 
@@ -391,13 +338,10 @@ class ListDictFilter:
             elif isinstance(entry, dict):
                 self.data.append(RelaxedDictionary(entry))
             else:
-                try:
-                    self.data.append(RelaxedDictionary(dict(entry)))
-                except ValueError:
-                    assert False, "Must be a list of dict(able) or RelaxedDictionary"
+                assert False, "Must be a list of dict or RelaxedDictionary"
         self.n_next_filters_or = 0
         self.n_next_filters_keep_rows: Set[RelaxedDictionary] = set()
-
+    
     def filter_or(self, n_next_filters_or: int) -> ListDictFilter:
         assert isinstance(n_next_filters_or, int)
         assert 0 < n_next_filters_or, "Must be a positive integer"
@@ -408,7 +352,7 @@ class ListDictFilter:
         if not isinstance(value, list):
             value = [value]
         return self.filter_function(keys, lambda x: x in value)
-
+    
     def has_key(self, keys: List[str] | str) -> ListDictFilter:
         return self.filter_function(keys, lambda x: x is not None)
 
@@ -421,13 +365,13 @@ class ListDictFilter:
         ) -> ListDictFilter:
         if not isinstance(keys, list):
             keys = [keys]
-
+        
         filtered_data = [e for e in self.data if func(e.get(*keys), *args, **kwargs)]
 
         if self.n_next_filters_or == 0:
             self.data = filtered_data
             return self
-
+        
         # If filter_or has been set then we need to keep track of the rows that
         # have previous passed the filter. Only when n_next_filters_or is 0
         # should be set the internal data to the rows that pass. We can use a
@@ -456,9 +400,9 @@ class ListDictFilter:
         assert self.n_next_filters_or == 0, "You have not filtered n times after the or"
 
         if len(self.data) == 0:
-            assert not must_find, "Found 0 items. Expecting 1 or more. must_find is True"
+            assert not must_find, "Must compile down to at least one result"
             return RelaxedDictionary({})
-
+        
         if len(self.data) == 1:
             return self.data[0]
 
@@ -466,10 +410,9 @@ class ListDictFilter:
             return self.data[0]
 
         for item in self.data:
-            print("-----------------------------------")
             print(json.dumps(item.get_base(), indent=4))
 
-        assert False, f"Found {len(self.data)} items. Expecting 0 or 1. allow_duplicates is False"
+        assert False, "Should filter down to one item only to use this function"
 
 
 def flatten_json(d: dict, delim: str) -> dict:
@@ -494,7 +437,7 @@ def flatten_json(d: dict, delim: str) -> dict:
     return val
 
 
-def dict_to_csv(list_dict_json: List[dict], delim=".") -> str:
+def dict_to_csv(json_dict: List[dict], delim=".") -> str:
     """Flattens and converts a dictionary to a csv using the delimeter to show
     nested content.
 
@@ -507,19 +450,19 @@ def dict_to_csv(list_dict_json: List[dict], delim=".") -> str:
         str: The csv as a string
     """
     fields = {}
-    for record in list_dict_json:
+    for record in json_dict:
         record = flatten_json(record, delim)
         for key in record.keys():
             fields[key] = None
-
+    
     f = StringIO()
     writer = csv.DictWriter(f, fieldnames=fields.keys())
     writer.writeheader()
 
-    for record in list_dict_json:
+    for record in json_dict:
         record = flatten_json(record, delim)
         writer.writerow(record)
-
+    
     return f.getvalue().replace("\r", "")
 
 
@@ -552,18 +495,6 @@ def dict_to_url_query(d: dict) -> str:
     return "&".join(queries)
 
 
-def split_url_and_query(url: str) -> Tuple[str, Dict[str, str]]:
-    if "?" not in url:
-        return url, {}
-
-    url, query_text = url.split("?")
-    queries = {}
-    for query in query_text.split("&"):
-        key, value = query.split("=")
-        queries[key] = value
-    return url, queries
-
-
 def nested_get(dictionary: dict, *keys, default_value=None):
     """
     Will attempt to continue to getting values from nested dictionaries
@@ -574,11 +505,11 @@ def nested_get(dictionary: dict, *keys, default_value=None):
     """
     if dictionary is None:
         return default_value
-
+    
     for key in keys:
         if key not in dictionary:
             return default_value
-
+        
         dictionary = dictionary[key]
         if not isinstance(dictionary, dict):
             break
@@ -599,7 +530,7 @@ def arrayify_dict(d: dict, query: List[str], key_to_add: str):
     for key, nest in dict_should_be_list.items():
         nest[key_to_add] = key
         inserting_list.append(nest)
-
+    
     d.set(prior_lookup, final_key, inserting_list)
     return d
 
@@ -607,35 +538,8 @@ def arrayify_dict(d: dict, query: List[str], key_to_add: str):
 def safe_open_w(path: str, **kwargs):
     """Open "path" for writing, creating any parent directories as needed.
     """
-    dir_component = os.path.dirname(path)
-    if dir_component != "":
-        os.makedirs(dir_component, exist_ok=True)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     return open(path, "w", **kwargs)
-
-
-def safe_open_wb(path: str, **kwargs):
-    """Open "path" for writing, creating any parent directories as needed.
-    """
-    dir_component = os.path.dirname(path)
-    if dir_component != "":
-        os.makedirs(dir_component, exist_ok=True)
-    return open(path, "wb", **kwargs)
-
-
-def safe_open_w_blocking(path: str, **kwargs):
-    dir_component = os.path.dirname(path)
-    if dir_component != "":
-        os.makedirs(dir_component, exist_ok=True)
-
-    try:
-        while True:
-            try:
-                return open(path, "w", **kwargs)
-            except IOError as e:
-                print(f"Error saving to '{path}': {e}")
-                input("Press Enter to try again: ")
-    except KeyboardInterrupt:
-        print("Skipping save")
 
 
 def cache_json(file_path: str, verbose=False):
@@ -660,22 +564,20 @@ def cache_json(file_path: str, verbose=False):
     return decorator
 
 
-def cache_csv(file_path: str, verbose=False, blocking=False):
+def cache_csv(file_path: str, verbose=False):
     """Decorator to cache the result of the function as a csv. Flattens the
     dictionary first.
 
     Args:
         file_path (str): The file to save to
     """
-    open_func = safe_open_w_blocking if blocking else safe_open_w
-
     def decorator(func_returning_dict: Callable[[], dict]):
         def wrapper(*args, **kwargs):
             contents = func_returning_dict(*args, **kwargs)
 
             if verbose:
                 print("Saving csv", file_path)
-            with open_func(file_path, encoding="utf-8") as f:
+            with safe_open_w(file_path, encoding="utf-8") as f:
                 f.write(dict_to_csv(contents))
             return contents
         return wrapper
@@ -689,7 +591,7 @@ def ip_strip_subnet(ip_with_subnet: str):
 def ip_in_subnet(ip_with_subnet: str, valid_prefixes: List[str] | str):
     if not isinstance(valid_prefixes, list):
         valid_prefixes = [valid_prefixes]
-
+    
     ip_address = ipaddress.ip_address(ip_strip_subnet(ip_with_subnet))
     prefixes = [ipaddress.ip_network(p) for p in valid_prefixes]
     for prefix in prefixes:
@@ -708,7 +610,7 @@ def __get_user():
     res: APIResponse = APIRequest("https://gorest.co.in/public/v2/users") \
         .set_method(Method.Get) \
         .execute()
-
+        
     print(res.status_code())
     print(res.json_pretty())
 
@@ -724,15 +626,36 @@ def __create_user():
         })\
         .set_content_type(ContentType.ApplicationJson) \
         .execute()
-
+        
     print(res.status_code())
     print(res.json_pretty())
 
 
-def __main():
+def main():
+    # __get_user()
+    __create_user()
+
+
+def __create_user():
+    res: APIResponse = APIRequest("https://gorest.co.in/public/v2/users") \
+        .set_method(Method.Post) \
+        .add_parameters({
+            "name": "Gene Takovich",
+            "gender": "male",
+            "email": "notsaul@goodman.com",
+            "status": "active"
+        })\
+        .set_content_type(ContentType.ApplicationJson) \
+        .execute()
+        
+    print(res.status_code())
+    print(res.json_pretty())
+
+
+def main():
     # __get_user()
     __create_user()
 
 
 if __name__ == "__main__":
-    __main()
+    main()
