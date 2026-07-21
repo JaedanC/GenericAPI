@@ -10,6 +10,7 @@ import json
 import os
 import time
 import traceback
+import urllib.parse
 
 
 import requests
@@ -122,9 +123,7 @@ class APIRequest:
 
         self._settle()
 
-        out.write(method_text + " " + self.url)
-        out.write(self.url + "\n")
-
+        out.write(method_text + " " + self.url + "\n")
 
         content_type_text = "(No content-type set)"
         if self._content_type == ContentType.ApplicationJson:
@@ -145,7 +144,7 @@ class APIRequest:
         self._base_url = url
         self._url = url
         for k, v in queries.items():
-            self.add_query(k, v)
+            self.add_query(k, urllib.parse.unquote(v))
 
     def set_method(self, method: Method):
         if self._method is not None:
